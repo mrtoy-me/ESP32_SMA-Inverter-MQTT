@@ -41,9 +41,10 @@ uint16_t pcktBufMax = 0; // max. used size of PcktBuf
 uint16_t pcktID = 1;
 const char BTPin[] = {'0','0','0','0',0}; // BT pin Always 0000. (not login passcode!)
 
+const int scanRate = 60;
 uint8_t  EspBTAddress[6]; // is retrieved from BT packet
 uint32_t nextTime = 0;
-uint32_t nextInterval = 10*1000; // 10 sec.
+uint32_t nextInterval = scanRate *1000; // 10 sec.
 uint8_t  errCnt = 0;
 bool     btConnected = false;
 
@@ -60,11 +61,13 @@ int  charLen = 0;
 #endif
 
 void setup() { 
+  extern BluetoothSerial SerialBT;
+  extern InverterData *pInvData;
   Serial.begin(115200); 
   delay(1000);
   pInvData->SUSyID = 0x7d;
   pInvData->Serial = 0;
-
+  nextTime = millis();
   // reverse inverter BT address
   for(uint8_t i=0; i<6; i++) pInvData->BTAddress[i] = SmaBTAddress[5-i];
   DEBUG2_PRINTF("pInvData->BTAddress: %02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -79,20 +82,29 @@ void setup() {
   delay(2000);
   setupWebserver();
   #endif
-
+  #ifdef SMA_MQTT
+  wifiStartup();
+  #endif
 } 
 
   // **** Loop ************
 void loop() { 
+  extern BluetoothSerial SerialBT;
   // connect or reconnect after connection lost 
-  if ((nextTime<millis()) && (!btConnected)) {
-    nextTime = millis()+nextInterval;
+  if ((nextTime < millis()) && (!btConnected)) {
+    nextTime = millis() + nextInterval;
+    Serial.println("");
+    Serial.print(millis());
+    Serial.print(" + ");
+    Serial.print(nextInterval);
+    Serial.print(" = ");
+    Serial.println(nextTime);
     pcktID = 1;
     // **** Connect SMA **********
     DEBUG1_PRINT("\nConnecting SMA inverter: ");
     if (SerialBT.connect(SmaBTAddress)) {
       btConnected = true;
-      nextInterval = 10*1000; // 10 sec.
+      // nextInterval = 60*1000; // 60 sec.
       // **** Initialize SMA *******
       DEBUG1_PRINTLN("connected");
       E_RC rc = initialiseSMAConnection();
@@ -103,12 +115,19 @@ void loop() {
       DEBUG1_PRINT("\n*** logonSMAInverter");
       rc = logonSMAInverter(SmaInvPass, USERGROUP);
       ReadCurrentData();
-    } else {  // failed to connect
-      if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
-    } 
+      SerialBT.disconnect();
+      btConnected = false;
+    } // else {  // failed to connect
+      // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
+    // } 
   } 
-  
+  DEBUG2_PRINT(".");
   #ifdef SMA_WEBSERVER
     server.handleClient();  
+  #endif
+  #ifdef SMA_MQTT
+    extern WebServer webServer;
+    webServer.handleClient();  
+    delay(1000);
   #endif
 }
