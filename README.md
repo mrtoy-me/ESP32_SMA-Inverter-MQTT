@@ -1,9 +1,11 @@
-# ESP32_SMA-Inverter
-Arduino Project to read SMA Inverter data via ESP32 bluetooth.
+# ESP32_SMA-Inverter-MQTT
+Arduino Project to read SMA Inverter data via ESP32 bluetooth and post to MQTT for consumption by Home Assistant.
+
 It ist tested with my SMA SMC6000TL with a plugin SMA bluetooth module.
 Please let me know when you have tested the software on other SMA Inverters.
 
 The starting point for this project was the code posted by "SBFspot" and "ESP32_to_SMA" on github.
+Forked from the great work of Lupo135, who had a different use case in mind.
 Many thanks for the work on these projects!
 
 SETUP:
