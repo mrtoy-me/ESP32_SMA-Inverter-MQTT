@@ -31,8 +31,15 @@ SOFTWARE.
 #include "Config.h"
 #include "Utils.h"
 
+// Configuration structure
+Config config;
 const uint16_t AppSUSyID = 125;
 uint32_t AppSerial;
+char SmaInvPass[12]; 
+
+// SMA blutooth address
+uint8_t SmaBTAddress[6]; 
+
 //
 #define maxpcktBufsize 512
 uint8_t  BTrdBuf[256];    //  Serial.printf("Connecting to %s\n", ssid);
@@ -66,6 +73,15 @@ void setup() {
   extern InverterData *pInvData;
   Serial.begin(115200); 
   delay(1000);
+  configSetup();
+
+// Convert the MAC address string to binary
+  sscanf(config.SmaBTAddress.c_str(), "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx", 
+          &SmaBTAddress[0], &SmaBTAddress[1], &SmaBTAddress[2], &SmaBTAddress[3], &SmaBTAddress[4], &SmaBTAddress[5]);
+  for(int i = 0; i < sizeof(SmaInvPass);i++)
+    SmaInvPass[i] ='\0';
+  strlcpy(SmaInvPass , config.SmaInvPass.c_str(), sizeof(SmaInvPass));
+
   pInvData->SUSyID = 0x7d;
   pInvData->Serial = 0;
   nextTime = millis();
@@ -123,9 +139,6 @@ void loop() {
     // } 
   } 
   DEBUG2_PRINT(".");
-  #ifdef SMA_WEBSERVER
-    server.handleClient();  
-  #endif
   #ifdef SMA_MQTT
     extern WebServer webServer;
     webServer.handleClient();  

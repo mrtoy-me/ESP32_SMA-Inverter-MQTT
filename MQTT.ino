@@ -28,17 +28,16 @@ SOFTWARE.
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <Preferences.h>
+#include <ArduinoJson.h>
+#include <FS.h>
+#include <LittleFS.h>
+#include "Config.h"
 
-// MQTT configuration
-struct Config {
-  String mqttBroker;
-  int mqttPort;
-  String mqttUser;
-  String mqttPasswd;
-  String mqttTopic;
-  float calConst;
-};
-Config config;
+#define MYFS LittleFS
+#define FORMAT_LITTLEFS_IF_FAILED 
+
+
+extern Config config;
 
 int needDNS = 0;
 const byte DNS_PORT = 53;
@@ -87,7 +86,8 @@ void wifiStartup(){
   
   webServer.begin();
   webServer.on("/", formPage);
-  webServer.on("/", connectAP);
+  webServer.on("/ap", connectAP);
+  webServer.on("/postform",handleForm);
 
 }
 
@@ -164,9 +164,9 @@ table, th, td {\
 
 
   strcat(responseHTML, "<TABLE><TR><TH>Configuration</TH><TH>Setting</TH>\n");
-  sprintf(tempstr, "<TR><TD>Inverter Bluetooth Address :</TD><TD> <input type=\"text\" name=\"mqttBroker\" value=\"%h\"></TD><TR>\n\n",SmaBTAddress);
+  sprintf(tempstr, "<TR><TD>Inverter Bluetooth Address :</TD><TD> <input type=\"text\" name=\"btaddress\" value=\"%h\"></TD><TR>\n\n",SmaBTAddress);
   strcat(responseHTML, tempstr);
-  sprintf(tempstr, "<TR><TD>MQTT Inverter Password :</TD><TD> <input type=\"text\" name=\"mqttBroker\" value=\"%s\"></TD><TR>\n\n",SmaInvPass);
+  sprintf(tempstr, "<TR><TD>MQTT Inverter Password :</TD><TD> <input type=\"text\" name=\"btpw\" value=\"%s\"></TD><TR>\n\n",SmaInvPass);
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>MQTT Broker Hostname or IP Address :</TD><TD> <input type=\"text\" name=\"mqttBroker\" value=\"%s\"></TD><TR>\n\n",config.mqttBroker.c_str());
   strcat(responseHTML, tempstr);
@@ -187,4 +187,36 @@ table, th, td {\
   delay(100);// Serial.print(responseHTML);
   webServer.send(200, "text/html", responseHTML);
 
+}
+
+// Function to extract the configuration
+void handleForm() {
+
+  if (webServer.method() != HTTP_POST) {
+    webServer.send(405, "text/plain", "Method Not Allowed");
+  } else {
+    String message = "POST form was:\n";
+    for (uint8_t i = 0; i < webServer.args(); i++) {
+      String name = webServer.argName(i);
+      if (name == "mqttBroker") {
+        config.mqttBroker = webServer.arg(i);
+        config.mqttBroker.trim();
+      } else if (name == "mqttPort") {
+        String val = webServer.arg(i);
+        config.mqttPort = val.toInt();   
+      } else if (name == "mqttUser") {
+        config.mqttUser = webServer.arg(i);
+        config.mqttUser.trim();
+      } else if (name == "mqttPasswd") {
+        config.mqttPasswd = webServer.arg(i);
+        config.mqttPasswd.trim();
+      } else if (name == "mqttTopic") {
+        config.mqttTopic = webServer.arg(i);
+        config.mqttTopic.trim();
+      } 
+    }
+    // saveConfiguration(confFile,config);
+    // printFile(confFile);
+    formPage();
+  }
 }
