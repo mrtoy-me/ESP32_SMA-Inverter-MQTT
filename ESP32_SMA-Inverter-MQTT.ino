@@ -30,6 +30,8 @@ SOFTWARE.
 
 #include "Config.h"
 #include "Utils.h"
+#include "SMA_bluetooth.h"
+#include "SMA_Inverter.h"
 
 // Configuration structure
 Config config;
@@ -49,10 +51,10 @@ uint16_t pcktBufMax = 0; // max. used size of PcktBuf
 uint16_t pcktID = 1;
 const char BTPin[] = {'0','0','0','0',0}; // BT pin Always 0000. (not login passcode!)
 
-const int scanRate = 60;
+// const int scanRate = 60;
 uint8_t  EspBTAddress[6]; // is retrieved from BT packet
 uint32_t nextTime = 0;
-uint32_t nextInterval = scanRate *1000; // 10 sec.
+// uint32_t nextInterval = scanRate *1000; // 10 sec.
 uint8_t  errCnt = 0;
 bool     btConnected = false;
 
@@ -61,12 +63,11 @@ char timeBuf[24];
 char charBuf[CHAR_BUF_MAX];
 int  charLen = 0;
 
-#include "SMA_bluetooth.h"
-#include "SMA_Inverter.h"
 
-#ifdef SMA_WEBSERVER
-#include "SMA_webserver.h"
-#endif
+
+
+// External variables
+extern WebServer webServer;
 
 void setup() { 
   extern BluetoothSerial SerialBT;
@@ -78,6 +79,7 @@ void setup() {
 // Convert the MAC address string to binary
   sscanf(config.SmaBTAddress.c_str(), "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx", 
           &SmaBTAddress[0], &SmaBTAddress[1], &SmaBTAddress[2], &SmaBTAddress[3], &SmaBTAddress[4], &SmaBTAddress[5]);
+  // Zero the array, all unused butes must be 0
   for(int i = 0; i < sizeof(SmaInvPass);i++)
     SmaInvPass[i] ='\0';
   strlcpy(SmaInvPass , config.SmaInvPass.c_str(), sizeof(SmaInvPass));
@@ -95,27 +97,24 @@ void setup() {
   SerialBT.setPin(&BTPin[0]); 
 
   // *** Start WIFI and WebServer
-  #ifdef SMA_WEBSERVER
-  delay(2000);
-  setupWebserver();
-  #endif
-  #ifdef SMA_MQTT
+
   wifiStartup();
-  #endif
+
 } 
 
   // **** Loop ************
 void loop() { 
   extern BluetoothSerial SerialBT;
   // connect or reconnect after connection lost 
+
   if ((nextTime < millis()) && (!btConnected)) {
-    nextTime = millis() + nextInterval;
-    Serial.println("");
+    nextTime = millis() + (config.ScanRate * 1000);
+    /* Serial.println("");
     Serial.print(millis());
     Serial.print(" + ");
     Serial.print(nextInterval);
     Serial.print(" = ");
-    Serial.println(nextTime);
+    Serial.println(nextTime); */
     pcktID = 1;
     // **** Connect SMA **********
     DEBUG1_PRINT("\nConnecting SMA inverter: ");
@@ -137,11 +136,9 @@ void loop() {
     } // else {  // failed to connect
       // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
     // } 
-  } 
-  DEBUG2_PRINT(".");
-  #ifdef SMA_MQTT
-    extern WebServer webServer;
+  }
+    // DEBUG2_PRINT(".");
+    wifiLoop();
     webServer.handleClient();  
-    delay(1000);
-  #endif
+    delay(100);
 }

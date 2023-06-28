@@ -32,6 +32,7 @@ SOFTWARE.
 #include <FS.h>
 #include <LittleFS.h>
 #include "Config.h"
+#include "SMA_Inverter.h"
 
 #define MYFS LittleFS
 #define FORMAT_LITTLEFS_IF_FAILED 
@@ -60,9 +61,12 @@ void wifiStartup(){
   WiFi.hostname(sapString);
   WiFi.begin();
   delay(5000);
+
+  if (config.mqttTopic == "") 
+    config.mqttTopic = sapString;
   
   if (WiFi.status() != WL_CONNECTED) {
-    WiFi.mode(WIFI_AP);
+    /* WiFi.mode(WIFI_AP);
     Serial.print("Running in AP mode AP name: ");
     Serial.println(sapString);
     delay(2000);
@@ -72,6 +76,8 @@ void wifiStartup(){
     // provided IP to all DNS request
     dnsServer.start(DNS_PORT, "*", apIP);
     needDNS = 1;
+    */
+    mySmartConfig();
   } else {
   
     String hostName = "Hostname: ";
@@ -87,7 +93,7 @@ void wifiStartup(){
   webServer.begin();
   webServer.on("/", formPage);
   webServer.on("/ap", connectAP);
-  webServer.on("/postform",handleForm);
+  webServer.on("/postform/",handleForm);
 
 }
 
@@ -143,6 +149,7 @@ void wifiLoop(){
 void formPage () {
   char tempstr[1024];
   char *responseHTML;
+  extern InverterData *pInvData;
 
   responseHTML = (char *)malloc(10000);
 
@@ -163,10 +170,10 @@ table, th, td {\
 <form method=\"post\" enctype=\"application/x-www-form-urlencoded\" action=\"/postform/\">");
 
 
-  strcat(responseHTML, "<TABLE><TR><TH>Configuration</TH><TH>Setting</TH>\n");
-  sprintf(tempstr, "<TR><TD>Inverter Bluetooth Address :</TD><TD> <input type=\"text\" name=\"btaddress\" value=\"%h\"></TD><TR>\n\n",SmaBTAddress);
+  strcat(responseHTML, "<TABLE><TR><TH>Configuration</TH><TH>Setting</TH></TR>\n");
+  sprintf(tempstr, "<TR><TD>Inverter Bluetooth Address (Format AA:BB:CC:DD:EE:FF) : </TD><TD> <input type=\"text\" name=\"btaddress\" value=\"%s\"></TD><TR>\n\n",config.SmaBTAddress.c_str());
   strcat(responseHTML, tempstr);
-  sprintf(tempstr, "<TR><TD>MQTT Inverter Password :</TD><TD> <input type=\"text\" name=\"btpw\" value=\"%s\"></TD><TR>\n\n",SmaInvPass);
+  sprintf(tempstr, "<TR><TD>MQTT Inverter Password :</TD><TD> <input type=\"text\" name=\"smapw\" value=\"%s\"></TD><TR>\n\n",config.SmaInvPass.c_str());
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>MQTT Broker Hostname or IP Address :</TD><TD> <input type=\"text\" name=\"mqttBroker\" value=\"%s\"></TD><TR>\n\n",config.mqttBroker.c_str());
   strcat(responseHTML, tempstr);
@@ -182,8 +189,30 @@ table, th, td {\
 
   strcat(responseHTML, "</TABLE>");
   strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form>");
+
+
+  strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
+  snprintf(tempstr, sizeof(tempstr),
+"<tr><td>Pac</td><td>%1.3f kW</td></tr>\n\
+ <tr><td>Udc</td><td>%1.1f V</td></tr>\n\
+ <tr><td>Idc</td><td>%1.3f A</td></tr>\n\
+ <tr><td>Uac</td><td>%1.1f V</td></tr>\n\
+ <tr><td>Iac</td><td>%1.3f A</td></tr>\n"
+ , tokW(pInvData->Pac)
+ , toVolt(pInvData->Udc)
+ , toAmp(pInvData->Idc)
+ , toVolt(pInvData->Uac)
+ , toAmp(pInvData->Iac));
+  strcat(responseHTML, tempstr);
+  snprintf(tempstr, sizeof(tempstr),
+"<tr><td>E-Today</td><td>%1.3f kWh</td></tr>\n\
+ <tr><td>E-Total</td><td>%1.3f kWh</td></tr>\n"
+ , tokWh(pInvData->EToday)
+ , tokWh(pInvData->ETotal));
+  strcat(responseHTML, tempstr);
   // if (DEBUG)
   //  Serial.print(responseHTML);
+  strcat(responseHTML,"</TABLE></body></html>\n");
   delay(100);// Serial.print(responseHTML);
   webServer.send(200, "text/html", responseHTML);
 
@@ -213,10 +242,17 @@ void handleForm() {
       } else if (name == "mqttTopic") {
         config.mqttTopic = webServer.arg(i);
         config.mqttTopic.trim();
+      } else if (name == "btaddress") {
+        config.SmaBTAddress = webServer.arg(i);
+        config.SmaBTAddress.trim();
+      } else if (name == "smapw") {
+        config.SmaInvPass = webServer.arg(i);
+        config.SmaInvPass.trim();
       } 
+
     }
-    // saveConfiguration(confFile,config);
-    // printFile(confFile);
+    saveConfiguration(confFile,config);
+    printFile(confFile);
     formPage();
   }
 }

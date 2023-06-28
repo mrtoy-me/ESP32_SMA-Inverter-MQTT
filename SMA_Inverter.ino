@@ -248,7 +248,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pInvData->Pac = value32;
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
-                  DEBUG1_PRINTF("\nPac %15.3f kW GMT:%s", tokW(value32), timeBuf);
+                  DEBUG1_PRINTF("Pac %15.3f kW \n GMT:%s ", tokW(value32), timeBuf);
                   break;
        
               case GridMsWphsA: //SPOT_PAC1

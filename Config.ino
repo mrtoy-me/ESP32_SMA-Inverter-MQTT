@@ -3,7 +3,7 @@
 #include <LittleFS.h>
 #include "Config.h"
 
-#define FORMAT_LITTLEFS_IF_FAILED 
+#define FORMAT_LITTLEFS_IF_FAILED true
 
 
 // Our configuration structure.
