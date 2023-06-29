@@ -68,6 +68,7 @@ int  charLen = 0;
 
 // External variables
 extern WebServer webServer;
+extern int smartConfig;
 
 void setup() { 
   extern BluetoothSerial SerialBT;
@@ -75,39 +76,42 @@ void setup() {
   Serial.begin(115200); 
   delay(1000);
   configSetup();
+  wifiStartup();
+  
+  if ( !smartConfig) {
+    // Convert the MAC address string to binary
+    sscanf(config.SmaBTAddress.c_str(), "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx", 
+            &SmaBTAddress[0], &SmaBTAddress[1], &SmaBTAddress[2], &SmaBTAddress[3], &SmaBTAddress[4], &SmaBTAddress[5]);
+    // Zero the array, all unused butes must be 0
+    for(int i = 0; i < sizeof(SmaInvPass);i++)
+       SmaInvPass[i] ='\0';
+    strlcpy(SmaInvPass , config.SmaInvPass.c_str(), sizeof(SmaInvPass));
 
-// Convert the MAC address string to binary
-  sscanf(config.SmaBTAddress.c_str(), "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx", 
-          &SmaBTAddress[0], &SmaBTAddress[1], &SmaBTAddress[2], &SmaBTAddress[3], &SmaBTAddress[4], &SmaBTAddress[5]);
-  // Zero the array, all unused butes must be 0
-  for(int i = 0; i < sizeof(SmaInvPass);i++)
-    SmaInvPass[i] ='\0';
-  strlcpy(SmaInvPass , config.SmaInvPass.c_str(), sizeof(SmaInvPass));
-
-  pInvData->SUSyID = 0x7d;
-  pInvData->Serial = 0;
-  nextTime = millis();
-  // reverse inverter BT address
-  for(uint8_t i=0; i<6; i++) pInvData->BTAddress[i] = SmaBTAddress[5-i];
-  DEBUG2_PRINTF("pInvData->BTAddress: %02X:%02X:%02X:%02X:%02X:%02X\n",
-               pInvData->BTAddress[5], pInvData->BTAddress[4], pInvData->BTAddress[3],
-               pInvData->BTAddress[2], pInvData->BTAddress[1], pInvData->BTAddress[0]);
-  // *** Start BT
-  SerialBT.begin("ESP32test", true);   // "true" creates this device as a BT Master.
-  SerialBT.setPin(&BTPin[0]); 
-
+    pInvData->SUSyID = 0x7d;
+    pInvData->Serial = 0;
+    nextTime = millis();
+    // reverse inverter BT address
+    for(uint8_t i=0; i<6; i++) pInvData->BTAddress[i] = SmaBTAddress[5-i];
+    DEBUG2_PRINTF("pInvData->BTAddress: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                pInvData->BTAddress[5], pInvData->BTAddress[4], pInvData->BTAddress[3],
+                pInvData->BTAddress[2], pInvData->BTAddress[1], pInvData->BTAddress[0]);
+    // *** Start BT
+    SerialBT.begin("ESP32test", true);   // "true" creates this device as a BT Master.
+    SerialBT.setPin(&BTPin[0]); 
+  }
   // *** Start WIFI and WebServer
 
-  wifiStartup();
+
 
 } 
 
   // **** Loop ************
 void loop() { 
   extern BluetoothSerial SerialBT;
+
   // connect or reconnect after connection lost 
 
-  if ((nextTime < millis()) && (!btConnected)) {
+  if ( !smartConfig && (nextTime < millis()) && (!btConnected)) {
     nextTime = millis() + (config.ScanRate * 1000);
     /* Serial.println("");
     Serial.print(millis());
@@ -137,8 +141,8 @@ void loop() {
       // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
     // } 
   }
-    // DEBUG2_PRINT(".");
-    wifiLoop();
-    webServer.handleClient();  
-    delay(100);
+  // DEBUG1_PRINT(".");
+  wifiLoop();
+    
+  delay(100);
 }

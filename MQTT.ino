@@ -25,8 +25,6 @@ SOFTWARE.
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
-#include <DNSServer.h>
-#include <ESPmDNS.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <FS.h>
@@ -40,10 +38,10 @@ SOFTWARE.
 
 extern Config config;
 
-int needDNS = 0;
-const byte DNS_PORT = 53;
-DNSServer         dnsServer;
-IPAddress         apIP(10, 10, 10, 1);
+
+int smartConfig = 1; 
+
+IPAddress         apIP(8,8,4,4);
 
 WebServer webServer(80);
 
@@ -55,7 +53,7 @@ void wifiStartup(){
 
   snprintf(sapString, 20, "SMA-%08X", ESP.getEfuseMac());
 
-  // Attempt to connecty to the AP stored on board, if not, start in SoftAP mode
+  // Attempt to connect to the AP stored on board, if not, start in SoftAP mode
   WiFi.mode(WIFI_STA);
   delay(2000);
   WiFi.hostname(sapString);
@@ -66,20 +64,10 @@ void wifiStartup(){
     config.mqttTopic = sapString;
   
   if (WiFi.status() != WL_CONNECTED) {
-    /* WiFi.mode(WIFI_AP);
-    Serial.print("Running in AP mode AP name: ");
-    Serial.println(sapString);
-    delay(2000);
-    WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-    WiFi.softAP(sapString);
-    // if DNSServer is started with "*" for domain name, it will reply with
-    // provided IP to all DNS request
-    dnsServer.start(DNS_PORT, "*", apIP);
-    needDNS = 1;
-    */
+    // Launch smartconfig to reconfigure wifi
     mySmartConfig();
   } else {
-  
+    smartConfig = 0; 
     String hostName = "Hostname: ";
     hostName = hostName + sapString;
     Serial.println(hostName);
@@ -87,13 +75,14 @@ void wifiStartup(){
     Serial.println(WiFi.localIP());
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
-    needDNS = 0;
   } 
   
   webServer.begin();
   webServer.on("/", formPage);
-  webServer.on("/ap", connectAP);
+  webServer.on("/smartconfig", connectAP);
   webServer.on("/postform/",handleForm);
+
+  Serial.print("Web Server Running: ");
 
 }
 
@@ -129,6 +118,9 @@ void mySmartConfig() {
   Serial.println(WiFi.localIP());
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
+  Serial.println("Restarting in 5 seconds");
+  delay(5000);
+  ESP.restart();
 }
 
 // Use ESP SmartConfig to connect to wifi
@@ -141,9 +133,7 @@ void connectAP(){
 
 
 void wifiLoop(){
-  if (needDNS) {
-    dnsServer.processNextRequest();
-  }
+  webServer.handleClient();  
 }
 
 void formPage () {
@@ -152,9 +142,9 @@ void formPage () {
   extern InverterData *pInvData;
 
   responseHTML = (char *)malloc(10000);
-
+  DEBUG1_PRINT("Connect formpage\n");
   strcpy(responseHTML, "<!DOCTYPE html><html><head>\
-                      <title>Battery Charger</title></head><body>\
+                      <title>SMA Inverter</title></head><body>\
                       <style>\
                       table {\
   border-collapse: collapse;\
@@ -188,17 +178,22 @@ table, th, td {\
 
 
   strcat(responseHTML, "</TABLE>");
-  strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form>");
+  strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form><BR> <A href=\"/smartconfig\">Enable ESP Touch App smart config</A><BR>");
 
 
   strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
   snprintf(tempstr, sizeof(tempstr),
-"<tr><td>Pac</td><td>%1.3f kW</td></tr>\n\
+"<tr><td>Serial Number</td><td>%d %</td></tr>\n\
+ <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
+ <tr><td>Pac</td><td>%1.3f %x kW</td></tr>\n\
  <tr><td>Udc</td><td>%1.1f V</td></tr>\n\
  <tr><td>Idc</td><td>%1.3f A</td></tr>\n\
  <tr><td>Uac</td><td>%1.1f V</td></tr>\n\
  <tr><td>Iac</td><td>%1.3f A</td></tr>\n"
+ , pInvData->Serial
+ , pInvData->BTSigStrength
  , tokW(pInvData->Pac)
+ , pInvData->Pac
  , toVolt(pInvData->Udc)
  , toAmp(pInvData->Idc)
  , toVolt(pInvData->Uac)
@@ -220,7 +215,7 @@ table, th, td {\
 
 // Function to extract the configuration
 void handleForm() {
-
+  DEBUG1_PRINT("Connect handleForm\n");
   if (webServer.method() != HTTP_POST) {
     webServer.send(405, "text/plain", "Method Not Allowed");
   } else {
@@ -253,6 +248,7 @@ void handleForm() {
     }
     saveConfiguration(confFile,config);
     printFile(confFile);
-    formPage();
+    delay(5000);
+    ESP.restart();
   }
 }

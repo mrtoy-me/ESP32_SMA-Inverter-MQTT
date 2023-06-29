@@ -56,6 +56,7 @@ enum E_RC {
 #define ARCH_DAY_SIZE 288
 struct InverterData {
     uint8_t BTAddress[6];
+    float BTSigStrength;
     uint8_t SUSyID;
     uint32_t Serial;
     uint8_t NetID;

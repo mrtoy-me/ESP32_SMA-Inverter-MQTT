@@ -239,6 +239,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   //if (is_NaN(value64) || is_NaN((uint64_t)value64)) value64 = 0;
               } else if ((dataType != 16) && (dataType != 8)) { // ((dataType != DT_STRING) && (dataType != DT_STATUS)) {
                 value32 = get_u32(recptr + 16);
+                if ( value32 < 0) value32 = 0;
                 DEBUG3_PRINTF("\nvalue32=%d=0x%08x",value32, value32);
               }
               switch (lri) {
@@ -248,7 +249,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pInvData->Pac = value32;
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
-                  DEBUG1_PRINTF("Pac %15.3f kW \n GMT:%s ", tokW(value32), timeBuf);
+                  DEBUG1_PRINTF("Pac %15.3f kW %x \n GMT:%s ", tokW(value32),value32, timeBuf);
                   break;
        
               case GridMsWphsA: //SPOT_PAC1
@@ -513,7 +514,8 @@ bool getBT_SignalStrength() {
   BTsendPacket(pcktBuf);
 
   getPacket(pInvData->BTAddress, 4);
-  DEBUG1_PRINTF("BT-Signal %9.1f %%", ((float)BTrdBuf[22] * 100.0f / 255.0f));
+  pInvData->BTSigStrength = ((float)BTrdBuf[22] * 100.0f / 255.0f);
+  DEBUG1_PRINTF("BT-Signal %9.1f %%", pInvData->BTSigStrength );
   return true;
 }
 //-------------------------------------------------------------------------
