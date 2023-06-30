@@ -33,6 +33,8 @@ time_t   dateTime = 0;
 
 InverterData InvData;
 InverterData *pInvData = &InvData;
+DisplayData DispData;
+DisplayData *pDispData = &DispData;
 
 bool isValidSender(uint8_t expAddr[6], uint8_t isAddr[6]) {
   for (int i = 0; i < 6; i++)
@@ -197,6 +199,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
     writePacketLength(pcktBuf);
 
     BTsendPacket(pcktBuf);
+    int string[3] = { 0,0,0 }; //String number count
 
     uint8_t pcktcount = 0;
     bool  validPcktID = false;
@@ -254,6 +257,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
        
               case GridMsWphsA: //SPOT_PAC1
                   pInvData->Pmax = value32;
+                  pDispData->Pmax = tokW(value32);
                   //debug_watt("SPOT_PAC1", value32, datetime);
                   DEBUG1_PRINTF("\nPmax %14.2f kW ", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
@@ -261,6 +265,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
        
               case GridMsPhVphsA: //SPOT_UAC1
                   pInvData->Uac = value32;
+                  pDispData->Uac = toVolt(value32);
                   //debug_volt("SPOT_UAC1", value32, datetime);
                   DEBUG1_PRINTF("\nUac %15.2f V  ", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
@@ -269,6 +274,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
               case GridMsAphsA_1: //SPOT_IAC1
               case GridMsAphsA:
                   pInvData->Iac = value32;
+                  pDispData->Iac = toAmp(value32);
                   //debug_amp("SPOT_IAC1", value32, datetime);
                   DEBUG1_PRINTF("\nIac %15.2f A  ", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
@@ -276,28 +282,33 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
        
               case GridMsHz: //SPOT_FREQ
                   pInvData->Freq = value32;
+                  pDispData->Pmax = toHz(value32);
                   DEBUG1_PRINTF("\nFreq %14.2f Hz ", toHz(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsWatt: //SPOT_PDC1 / SPOT_PDC2
+                  pInvData->Wdc[string[0]++] = value32;
+                  pDispData->Wdc[string[0]++] = tokW(value32);
                   DEBUG1_PRINTF("\nPDC %15.2f kW ", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsVol: //SPOT_UDC1 / SPOT_UDC2
-                  pInvData->Udc = value32;
+                  pInvData->Udc[string[1]++] = value32;
+                  pDispData->Udc[string[1]++] = toVolt(value32);
                   DEBUG1_PRINTF("\nUdc %15.2f V  ", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsAmp: //SPOT_IDC1 / SPOT_IDC2
-                  pInvData->Idc = value32;
+                  pInvData->Idc[string[2]++] = value32;
+                  pDispData->Idc[string[2]++] = toAmp(value32);
                   DEBUG1_PRINTF("\nIdc %15.2f A  ", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
-                  if ((pInvData->Udc!=0) && (pInvData->Idc != 0))
+                  if ((pInvData->Udc[0]!=0) && (pInvData->Idc[0] != 0))
                     pInvData->Eta = ((uint64_t)pInvData->Uac * (uint64_t)pInvData->Iac * 10000) /
-                                    ((uint64_t)pInvData->Udc * (uint64_t)pInvData->Idc );
+                                    ((uint64_t)pInvData->Udc[0] * (uint64_t)pInvData->Idc[0] );
                   else pInvData->Eta = 0;
                   DEBUG1_PRINTF("\nEfficiency %8.2f %%", toPercent(pInvData->Eta));
                   break;
@@ -306,6 +317,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   //This function gives us the current inverter time
                   //pInvData->InverterDatetime = datetime;
                   pInvData->EToday = value64;
+                  pDispData->EToday = tokWh(value64);
                   //debug_kwh("SPOT_ETODAY", value64, datetime);
                   DEBUG1_PRINTF("\nE-Today %11.3f kWh", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
@@ -315,6 +327,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   //In case SPOT_ETODAY missing, this function gives us inverter time (eg: SUNNY TRIPOWER 6.0)
                   //pInvData->InverterDatetime = datetime;
                   pInvData->ETotal = value64;
+                  pDispData->ETotal = tokWh(value64);
                   //debug_kwh("SPOT_ETOTAL", value64, datetime);
                   DEBUG1_PRINTF("\nE-Total %11.3f kWh", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
@@ -514,8 +527,8 @@ bool getBT_SignalStrength() {
   BTsendPacket(pcktBuf);
 
   getPacket(pInvData->BTAddress, 4);
-  pInvData->BTSigStrength = ((float)BTrdBuf[22] * 100.0f / 255.0f);
-  DEBUG1_PRINTF("BT-Signal %9.1f %%", pInvData->BTSigStrength );
+  pDispData->BTSigStrength = ((float)BTrdBuf[22] * 100.0f / 255.0f);
+  DEBUG1_PRINTF("BT-Signal %9.1f %%", pDispData->BTSigStrength );
   return true;
 }
 //-------------------------------------------------------------------------

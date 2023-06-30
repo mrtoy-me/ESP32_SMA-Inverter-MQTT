@@ -62,20 +62,25 @@ void wifiStartup(){
 
   if (config.mqttTopic == "") 
     config.mqttTopic = sapString;
-  
-  if (WiFi.status() != WL_CONNECTED) {
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED) {
     // Launch smartconfig to reconfigure wifi
-    mySmartConfig();
-  } else {
-    smartConfig = 0; 
-    String hostName = "Hostname: ";
-    hostName = hostName + sapString;
-    Serial.println(hostName);
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-    WiFi.setAutoReconnect(true);
-    WiFi.persistent(true);
-  } 
+    Serial.print(">");
+    if (i > 3)
+      mySmartConfig();
+    i++;
+    delay(1000);
+  }
+  // Success connecting 
+  smartConfig = 0; 
+  String hostName = "Hostname: ";
+  hostName = hostName + sapString;
+  Serial.println(hostName);
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
+   
   
   webServer.begin();
   webServer.on("/", formPage);
@@ -140,6 +145,7 @@ void formPage () {
   char tempstr[1024];
   char *responseHTML;
   extern InverterData *pInvData;
+  extern DisplayData *pDispData;
 
   responseHTML = (char *)malloc(10000);
   DEBUG1_PRINT("Connect formpage\n");
@@ -185,20 +191,23 @@ table, th, td {\
   snprintf(tempstr, sizeof(tempstr),
 "<tr><td>Serial Number</td><td>%d %</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
- <tr><td>Pac</td><td>%1.3f %x kW</td></tr>\n\
- <tr><td>Udc</td><td>%1.1f V</td></tr>\n\
- <tr><td>Idc</td><td>%1.3f A</td></tr>\n\
- <tr><td>Uac</td><td>%1.1f V</td></tr>\n\
- <tr><td>Iac</td><td>%1.3f A</td></tr>\n"
+  <tr><td>Uac</td><td>%1.1f V</td></tr>\n\
+ <tr><td>Iac</td><td>%1.3f A</td></tr>\n\
+ <tr><td>Pac</td><td>%1.3f kW</td></tr>\n\
+ <tr><td>Udc</td><td>String 1: %15.2f V, String 2: %15.2f V</td></tr>\n\
+ <tr><td>Idc</td><td>String 1: %15.2f A, String 2: %15.2f A</td></tr>\n\
+ <tr><td>Wdc</td><td>String 1: %15.2f kW, String 2: %15.2f kW</td></tr>\n"
  , pInvData->Serial
- , pInvData->BTSigStrength
- , tokW(pInvData->Pac)
- , pInvData->Pac
- , toVolt(pInvData->Udc)
- , toAmp(pInvData->Idc)
- , toVolt(pInvData->Uac)
- , toAmp(pInvData->Iac));
+ , pDispData->BTSigStrength
+ , pDispData->Uac
+ , pDispData->Iac
+ , pDispData->Pac
+ , pDispData->Udc[0], pInvData->Udc[1]
+ , pDispData->Idc[0], pInvData->Idc[1]
+ , pDispData->Udc[0] * pDispData->Idc[0] , pDispData->Udc[1] * pDispData->Idc[1]);
+
   strcat(responseHTML, tempstr);
+
   snprintf(tempstr, sizeof(tempstr),
 "<tr><td>E-Today</td><td>%1.3f kWh</td></tr>\n\
  <tr><td>E-Total</td><td>%1.3f kWh</td></tr>\n"
