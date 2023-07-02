@@ -250,6 +250,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   //This function gives us the time when the inverter was switched off
                   pInvData->LastTime = datetime;
                   pInvData->Pac = value32;
+                  pDispData->Pac = tokW(value32);
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
                   DEBUG1_PRINTF("Pac %15.3f kW %x \n GMT:%s ", tokW(value32),value32, timeBuf);
@@ -282,29 +283,31 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
        
               case GridMsHz: //SPOT_FREQ
                   pInvData->Freq = value32;
-                  pDispData->Pmax = toHz(value32);
+                  pDispData->Freq = toHz(value32);
                   DEBUG1_PRINTF("\nFreq %14.2f Hz ", toHz(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsWatt: //SPOT_PDC1 / SPOT_PDC2
-                  pInvData->Wdc[string[0]++] = value32;
+                  pInvData->Wdc[string[0]] = value32;
                   pDispData->Wdc[string[0]++] = tokW(value32);
                   DEBUG1_PRINTF("\nPDC %15.2f kW ", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsVol: //SPOT_UDC1 / SPOT_UDC2
-                  pInvData->Udc[string[1]++] = value32;
+                  DEBUG1_PRINTF("\nUdc %15.2f V (%d) ", toVolt(value32),string[1]);
+                  pInvData->Udc[string[1]] = value32;
                   pDispData->Udc[string[1]++] = toVolt(value32);
-                  DEBUG1_PRINTF("\nUdc %15.2f V  ", toVolt(value32));
+                  
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsAmp: //SPOT_IDC1 / SPOT_IDC2
-                  pInvData->Idc[string[2]++] = value32;
+                  DEBUG1_PRINTF("\nIdc %15.2f A (%d) ", toAmp(value32),string[2]);
+                  pInvData->Idc[string[2]] = value32;
                   pDispData->Idc[string[2]++] = toAmp(value32);
-                  DEBUG1_PRINTF("\nIdc %15.2f A  ", toAmp(value32));
+
                   //printUnixTime(timeBuf, datetime);
                   if ((pInvData->Udc[0]!=0) && (pInvData->Idc[0] != 0))
                     pInvData->Eta = ((uint64_t)pInvData->Uac * (uint64_t)pInvData->Iac * 10000) /

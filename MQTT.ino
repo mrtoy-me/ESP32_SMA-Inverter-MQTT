@@ -23,7 +23,6 @@ SOFTWARE.
 // Wifi Functions choose between Station or SoftAP
 
 #include <WiFi.h>
-#include <WiFiClient.h>
 #include <WebServer.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -31,6 +30,10 @@ SOFTWARE.
 #include <LittleFS.h>
 #include "Config.h"
 #include "SMA_Inverter.h"
+
+
+
+
 
 #define MYFS LittleFS
 #define FORMAT_LITTLEFS_IF_FAILED 
@@ -41,14 +44,16 @@ extern Config config;
 
 int smartConfig = 1; 
 
-IPAddress         apIP(8,8,4,4);
+// IPAddress         apIP(8,8,4,4);
 
 WebServer webServer(80);
+extern PubSubClient client;
+char sapString[21];
 
 void wifiStartup(){
 
   // Build Hostname
-  char sapString[21];
+  
  
 
   snprintf(sapString, 20, "SMA-%08X", ESP.getEfuseMac());
@@ -88,13 +93,14 @@ void wifiStartup(){
   webServer.on("/postform/",handleForm);
 
   Serial.print("Web Server Running: ");
-
+  //Connect to MQTT broker if configured
+  brokerConnect();
 }
 
 // Configure wifi using ESP Smartconfig app on phone
 void mySmartConfig() {
   // Wipe current credentials
-  WiFi.disconnect(true); // deletes the wifi credentials
+  // WiFi.disconnect(true); // deletes the wifi credentials
   
   WiFi.mode(WIFI_STA);
   delay(2000);
@@ -103,9 +109,12 @@ void mySmartConfig() {
 
   //Wait for SmartConfig packet from mobile
   Serial.println("Waiting for SmartConfig.");
+  // if no smartconfig received after 5 minutes, reboot and try again
+  int count = 0;
   while (!WiFi.smartConfigDone()) {
     delay(500);
     Serial.print(".");
+    if (count++ > 600 ) ESP.restart();
   }
 
 
@@ -115,6 +124,7 @@ void mySmartConfig() {
 
   //Wait for WiFi to connect to AP
   Serial.println("Waiting for WiFi");
+  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
@@ -179,7 +189,7 @@ table, th, td {\
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>MQTT Broker Password :</TD><TD> <input type=\"text\" name=\"mqttPasswd\" value=\"%s\"></TD><TR>\n\n",config.mqttPasswd.c_str());
   strcat(responseHTML, tempstr);
-  sprintf(tempstr, "<TR><TD>MQTT Topic :</TD><TD> <input type=\"text\" name=\"mqttTopic\" value=\"%s\"></TD><TR>\n\n",config.mqttTopic.c_str());
+  sprintf(tempstr, "<TR><TD>MQTT Topic Preamble:</TD><TD> <input type=\"text\" name=\"mqttTopic\" value=\"%s\"></TD><TR>\n\n",config.mqttTopic.c_str());
   strcat(responseHTML, tempstr);
 
 
@@ -189,33 +199,34 @@ table, th, td {\
 
   strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
   snprintf(tempstr, sizeof(tempstr),
-"<tr><td>Serial Number</td><td>%d %</td></tr>\n\
+"<tr><td>MQTT Topic</td><td>%s-%d</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
-  <tr><td>Uac</td><td>%1.1f V</td></tr>\n\
- <tr><td>Iac</td><td>%1.3f A</td></tr>\n\
- <tr><td>Pac</td><td>%1.3f kW</td></tr>\n\
- <tr><td>Udc</td><td>String 1: %15.2f V, String 2: %15.2f V</td></tr>\n\
- <tr><td>Idc</td><td>String 1: %15.2f A, String 2: %15.2f A</td></tr>\n\
- <tr><td>Wdc</td><td>String 1: %15.2f kW, String 2: %15.2f kW</td></tr>\n"
+  <tr><td>Uac</td><td>%15.1f V</td></tr>\n\
+ <tr><td>Iac</td><td>%15.1f A</td></tr>\n\
+ <tr><td>Pac</td><td>%15.1f kW</td></tr>\n\
+ <tr><td>Udc</td><td>String 1: %15.1f V, String 2: %15.1f V</td></tr>\n\
+ <tr><td>Idc</td><td>String 1: %15.1f A, String 2: %15.1f A</td></tr>\n\
+ <tr><td>Wdc</td><td>String 1: %15.1f kW, String 2: %15.1f kW</td></tr>\n"
+ , config.mqttTopic.c_str()
  , pInvData->Serial
  , pDispData->BTSigStrength
  , pDispData->Uac
  , pDispData->Iac
  , pDispData->Pac
- , pDispData->Udc[0], pInvData->Udc[1]
- , pDispData->Idc[0], pInvData->Idc[1]
- , pDispData->Udc[0] * pDispData->Idc[0] , pDispData->Udc[1] * pDispData->Idc[1]);
+ , pDispData->Udc[0], pDispData->Udc[1]
+ , pDispData->Idc[0], pDispData->Idc[1]
+ , pDispData->Udc[0] * pDispData->Idc[0] / 1000 , pDispData->Udc[1] * pDispData->Idc[1] / 1000);
 
   strcat(responseHTML, tempstr);
 
   snprintf(tempstr, sizeof(tempstr),
-"<tr><td>E-Today</td><td>%1.3f kWh</td></tr>\n\
- <tr><td>E-Total</td><td>%1.3f kWh</td></tr>\n"
- , tokWh(pInvData->EToday)
- , tokWh(pInvData->ETotal));
+"<tr><td>Frequency</td><td>%5.2f kWh</td></tr>\n\
+ <tr><td>E-Today</td><td>%15.1f kWh</td></tr>\n\
+ <tr><td>E-Total</td><td>%15.1f kWh</td></tr>\n "
+ , pDispData->Freq
+ , pDispData->EToday
+ , pDispData->ETotal);
   strcat(responseHTML, tempstr);
-  // if (DEBUG)
-  //  Serial.print(responseHTML);
   strcat(responseHTML,"</TABLE></body></html>\n");
   delay(100);// Serial.print(responseHTML);
   webServer.send(200, "text/html", responseHTML);
@@ -260,4 +271,78 @@ void handleForm() {
     delay(5000);
     ESP.restart();
   }
+}
+
+void brokerConnect() {
+  if(config.mqttBroker.length() < 1){
+    return;
+  }
+  DEBUG1_PRINT("\nConnecting to MQTT Broker\n");
+
+  client.setServer(config.mqttBroker.c_str(), config.mqttPort);
+
+  // client.setCallback(callback);
+  for(int i =0; i < 3;i++) {
+    if ( !client.connected()){
+      DEBUG1_PRINTF("The client %s connects to the mqtt broker %s\n", sapString,config.mqttBroker.c_str());
+      // If there is a user account
+      if(config.mqttUser.length() > 1){
+        DEBUG1_PRINT(" with user/password\n");
+        if (client.connect(sapString,config.mqttUser.c_str(),config.mqttPasswd.c_str())) {
+        } else {
+          Serial.print("mqtt connect failed with state ");
+          Serial.print(client.state());
+          delay(2000);
+        }
+      } else {
+        DEBUG1_PRINT(" without user/password");
+        if (client.connect(sapString)) {
+        } else {
+          Serial.print("mqtt connect failed with state ");
+          Serial.print(client.state());
+          delay(2000);
+        }
+      }
+    }
+  }
+}
+void publishData(){
+  extern InverterData *pInvData;
+  extern DisplayData *pDispData;
+
+  if(config.mqttBroker.length() < 1){
+    return;
+  }
+  brokerConnect();
+  if (client.connected()){
+    char theData[2000];
+    char tmpstr[100];
+
+
+    snprintf(theData,sizeof(theData)-1,
+    "{ \"Serial\": %d, \"BTStrength\": %4.1f, \"Uac\": %5.1f, \"Iac\": %4.1f, \"Pac\": %3.1f, \"Udc\": [ %5.1f , %5.1f ], \"Idc\": [ %4.1f , %4.1f ], \"Wdc\": [%5.1f , %5.1f ], \"Freq\": %5.2f, \"EToday\": %5.1f, \"ETotal\": %15.1f }"
+ , pInvData->Serial
+ , pDispData->BTSigStrength
+ , pDispData->Uac
+ , pDispData->Iac
+ , pDispData->Pac
+ , pDispData->Udc[0], pDispData->Udc[1]
+ , pDispData->Idc[0], pDispData->Idc[1]
+ , pDispData->Udc[0] * pDispData->Idc[0] / 1000 , pDispData->Udc[1] * pDispData->Idc[1] / 1000
+ , pDispData->Freq
+ , pDispData->EToday
+ , pDispData->ETotal);
+
+
+    // strcat(theData,"}");
+    String topic;
+    topic = config.mqttTopic + "-" + String(pInvData->Serial);
+    DEBUG1_PRINT(topic);
+    DEBUG1_PRINT(" = ");
+    DEBUG1_PRINTF("%s\n",theData);
+    client.publish(topic.c_str(),theData);
+
+    DEBUG1_PRINT("Publish");
+  }
+  
 }

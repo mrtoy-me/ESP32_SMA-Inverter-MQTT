@@ -65,6 +65,8 @@ int  charLen = 0;
 
 
 
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 // External variables
 extern WebServer webServer;
@@ -137,6 +139,7 @@ void loop() {
       ReadCurrentData();
       SerialBT.disconnect();
       btConnected = false;
+      publishData();
     } // else {  // failed to connect
       // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
     // } 
