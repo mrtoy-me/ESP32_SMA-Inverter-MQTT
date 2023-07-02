@@ -274,7 +274,7 @@ void handleForm() {
 }
 
 void brokerConnect() {
-  if(config.mqttBroker.length() < 1){
+  if(config.mqttBroker.length() < 1 ){
     return;
   }
   DEBUG1_PRINT("\nConnecting to MQTT Broker\n");
@@ -340,9 +340,12 @@ void publishData(){
     DEBUG1_PRINT(topic);
     DEBUG1_PRINT(" = ");
     DEBUG1_PRINTF("%s\n",theData);
-    client.publish(topic.c_str(),theData);
-
-    DEBUG1_PRINT("Publish");
+    if ( pDispData->Pac > 0) {
+      client.publish(topic.c_str(),theData);
+      DEBUG1_PRINT("Publish");
+    } else {
+      DEBUG1_PRINT("No power, no point publishing");
+    }
   }
   
 }
