@@ -479,7 +479,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
        
               case CoolsysTmpNom:
                   //pInvData->Temperature = value32;
-                  DEBUG1_PRINTF("\nTemp.     %7.3f °C ", toTemp(value32));
+                  DEBUG1_PRINTF("\nTemp.     %7.3f Â°C ", toTemp(value32));
                   break;
        
               case MeteringGridMsTotWOut:
@@ -734,7 +734,7 @@ E_RC logonSMAInverter(const char *password, const uint8_t user) {
     if ((rc = getPacket(sixff, 1)) != E_OK) return rc;
 
     if (!validateChecksum()) return E_CHKSUM;
-    uint8_t rcvpcktID = get_u16(pcktBuf+27) & 0x7FFF;
+    uint16_t rcvpcktID = get_u16(pcktBuf+27) & 0x7FFF;
     if ((pcktID == rcvpcktID) && (get_u32(pcktBuf + 41) == now)) {
       pInvData->SUSyID = get_u16(pcktBuf + 15);
       pInvData->Serial = get_u32(pcktBuf + 17);
