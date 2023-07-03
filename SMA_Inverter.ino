@@ -535,6 +535,7 @@ bool getBT_SignalStrength() {
   DEBUG1_PRINTF("BT-Signal %9.1f %%", pDispData->BTSigStrength );
   return true;
 }
+
 //-------------------------------------------------------------------------
 E_RC initialiseSMAConnection() {
   extern uint8_t sixff[6];
@@ -578,6 +579,21 @@ E_RC initialiseSMAConnection() {
   DEBUG1_PRINTF("Serial Nr: %lu\n", pInvData->Serial);
   return E_OK;
 }
+
+// log off SMA Inverter - adapted from SBFspot Open Source Project (SBFspot.cpp) by mrtoy-me
+void logoffSMAInverter()
+{
+  pcktID++;
+  writePacketHeader(pcktBuf, 0x01, sixff);
+  writePacket(pcktBuf, 0x08, 0xA0, 0x0300, 0xFFFF, 0xFFFFFFFF);
+  write32(pcktBuf, 0xFFFD010E);
+  write32(pcktBuf, 0xFFFFFFFF);
+  writePacketTrailer(pcktBuf);
+  writePacketLength(pcktBuf);
+  BTsendPacket(pcktBuf);
+  return;
+}
+
 // **** Logon SMA **********
 E_RC logonSMAInverter(const char *password, const uint8_t user) {
   extern uint8_t sixff[6];
@@ -611,7 +627,7 @@ E_RC logonSMAInverter(const char *password, const uint8_t user) {
     if ((rc = getPacket(sixff, 1)) != E_OK) return rc;
 
     if (!validateChecksum()) return E_CHKSUM;
-    uint8_t rcvpcktID = get_u16(pcktBuf+27) & 0x7FFF;
+    uint16_t rcvpcktID = get_u16(pcktBuf+27) & 0x7FFF;
     if ((pcktID == rcvpcktID) && (get_u32(pcktBuf + 41) == now)) {
       pInvData->SUSyID = get_u16(pcktBuf + 15);
       pInvData->Serial = get_u32(pcktBuf + 17);

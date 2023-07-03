@@ -132,7 +132,10 @@ void loop() {
       E_RC rc = initialiseSMAConnection();
      
       getBT_SignalStrength();
-      
+
+      // not sure the purpose but SBfSpot code logs off before logging on and this has provided very reliable for me: mrtoy-me 
+      logoffSMAInverter();
+
       // **** logon SMA ************
       DEBUG1_PRINT("\n*** logonSMAInverter\n");
       rc = logonSMAInverter(SmaInvPass, USERGROUP);
