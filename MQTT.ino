@@ -22,40 +22,23 @@ SOFTWARE.
 */
 // Wifi Functions choose between Station or SoftAP
 
-#include <WiFi.h>
-#include <WebServer.h>
-#include <Preferences.h>
-#include <ArduinoJson.h>
-#include <FS.h>
-#include <LittleFS.h>
+
 #include "Config.h"
 #include "SMA_Inverter.h"
+#include "MQTT.h"
 
-
-
-
-
-#define MYFS LittleFS
 #define FORMAT_LITTLEFS_IF_FAILED 
 
 
 extern Config config;
-
+extern PubSubClient client;
 
 int smartConfig = 1; 
-
-// IPAddress         apIP(8,8,4,4);
-
 WebServer webServer(80);
-extern PubSubClient client;
 char sapString[21];
 
 void wifiStartup(){
-
   // Build Hostname
-  
- 
-
   snprintf(sapString, 20, "SMA-%08X", ESP.getEfuseMac());
 
   // Attempt to connect to the AP stored on board, if not, start in SoftAP mode
@@ -93,8 +76,7 @@ void wifiStartup(){
   webServer.on("/postform/",handleForm);
 
   Serial.print("Web Server Running: ");
-  //Connect to MQTT broker if configured
-  brokerConnect();
+  
 }
 
 // Configure wifi using ESP Smartconfig app on phone
@@ -152,7 +134,7 @@ void wifiLoop(){
 }
 
 void formPage () {
-  char tempstr[1024];
+  char tempstr[2048];
   char *responseHTML;
   extern InverterData *pInvData;
   extern DisplayData *pDispData;
@@ -191,7 +173,13 @@ table, th, td {\
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>MQTT Topic Preamble:</TD><TD> <input type=\"text\" name=\"mqttTopic\" value=\"%s\"></TD><TR>\n\n",config.mqttTopic.c_str());
   strcat(responseHTML, tempstr);
+  sprintf(tempstr, "<TR><TD>Inverter scan rate:</TD><TD> <input type=\"text\" name=\"ScanRate\" value=\"%d\"></TD><TR>\n\n",config.ScanRate);
+  strcat(responseHTML, tempstr);
 
+  if (config.hassDisc)
+    strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\" checked ></TD><TR>\n");
+  else
+    strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\"></TD><TR>\n");
 
   strcat(responseHTML, "</TABLE>");
   strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form><BR> <A href=\"/smartconfig\">Enable ESP Touch App smart config</A><BR>");
@@ -240,8 +228,10 @@ void handleForm() {
     webServer.send(405, "text/plain", "Method Not Allowed");
   } else {
     String message = "POST form was:\n";
+    config.hassDisc = false; 
     for (uint8_t i = 0; i < webServer.args(); i++) {
       String name = webServer.argName(i);
+      DEBUG1_PRINTF("%s, ",name.c_str());
       if (name == "mqttBroker") {
         config.mqttBroker = webServer.arg(i);
         config.mqttBroker.trim();
@@ -263,6 +253,11 @@ void handleForm() {
       } else if (name == "smapw") {
         config.SmaInvPass = webServer.arg(i);
         config.SmaInvPass.trim();
+      } else if (name == "ScanRate") {
+        config.ScanRate = atoi(webServer.arg(i).c_str());
+      } else if (name == "hassDisc") {
+        DEBUG1_PRINTF("%s\n",webServer.arg(i).c_str());
+        config.hassDisc = true;
       } 
 
     }
@@ -284,7 +279,7 @@ void brokerConnect() {
   // client.setCallback(callback);
   for(int i =0; i < 3;i++) {
     if ( !client.connected()){
-      DEBUG1_PRINTF("The client %s connects to the mqtt broker %s\n", sapString,config.mqttBroker.c_str());
+      DEBUG1_PRINTF("The client %s connects to the mqtt broker %s ", sapString,config.mqttBroker.c_str());
       // If there is a user account
       if(config.mqttUser.length() > 1){
         DEBUG1_PRINT(" with user/password\n");
@@ -295,7 +290,7 @@ void brokerConnect() {
           delay(2000);
         }
       } else {
-        DEBUG1_PRINT(" without user/password");
+        DEBUG1_PRINT(" without user/password\n");
         if (client.connect(sapString)) {
         } else {
           Serial.print("mqtt connect failed with state ");
@@ -310,13 +305,14 @@ void publishData(){
   extern InverterData *pInvData;
   extern DisplayData *pDispData;
 
-  if(config.mqttBroker.length() < 1){
+  if(config.mqttBroker.length() < 1 || !(pDispData->Pac > 0)){
     return;
   }
+
   brokerConnect();
   if (client.connected()){
     char theData[2000];
-    char tmpstr[100];
+    // char tmpstr[100];
 
 
     snprintf(theData,sizeof(theData)-1,
@@ -335,17 +331,66 @@ void publishData(){
 
 
     // strcat(theData,"}");
-    String topic;
-    topic = config.mqttTopic + "-" + String(pInvData->Serial);
+    char topic[100];
+    snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
     DEBUG1_PRINT(topic);
     DEBUG1_PRINT(" = ");
     DEBUG1_PRINTF("%s\n",theData);
-    if ( pDispData->Pac > 0) {
-      client.publish(topic.c_str(),theData);
-      DEBUG1_PRINT("Publish");
-    } else {
-      DEBUG1_PRINT("No power, no point publishing");
-    }
+    int len = strlen(theData);
+    client.beginPublish(topic,len,false);
+    if (client.print(theData))
+      DEBUG1_PRINT("Published\n");
+    else
+      DEBUG1_PRINT("Failed Publish\n");
+    client.endPublish();
   }
   
+}
+
+// Set up the topics in home assistant
+void hassAutoDiscover(){
+  char tmpstr[1000];
+  char topic[30];
+  extern InverterData *pInvData;
+  brokerConnect();
+  
+  snprintf(topic,sizeof(topic)-1, "%s-%d",config.mqttTopic.c_str(), pInvData->Serial);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s AC Power\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Pac}}\" }",topic,topic);
+  sendLongMQTT(topic,"Pac",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s AC Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Iac}}\" }",topic,topic);
+  sendLongMQTT(topic,"Iac",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s AC Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Uac}}\" }",topic,topic);
+  sendLongMQTT(topic,"Uac",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"frequency\", \"name\": \"%s AC Frequency\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"Hz\", \"value_template\": \"{{ value_json.Freq}}\" }",topic,topic);
+  sendLongMQTT(topic,"Freq",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[0]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Wdc1",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[1]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Wdc2",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[0]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Udc1",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[1]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Udc2",tmpstr);
+    snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[0]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Idc1",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[1]}}\" }",topic,topic);
+  sendLongMQTT(topic,"Idc2",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Today\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.EToday}}\" }",topic,topic);
+  sendLongMQTT(topic,"EToday",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Total\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.ETotal}}\" }",topic,topic);
+  sendLongMQTT(topic,"ETotal",tmpstr);
+}
+
+void sendLongMQTT(char *topic,char *postscript,char *msg){
+  int len = strlen(msg);
+  char tmpstr[100];
+  snprintf(tmpstr,sizeof(tmpstr),"homeassistant/sensor/%s-%s/config",topic,postscript);
+  client.beginPublish(tmpstr,len,true);
+  DEBUG1_PRINTF("%s -> %s... ",tmpstr,msg);
+   if (client.print(msg))
+      DEBUG1_PRINT("Published\n");
+    else
+      DEBUG1_PRINT("Failed Publish\n");
+    client.endPublish();
+    delay(200);
 }

@@ -41,6 +41,7 @@ void loadConfiguration(const char *filename, Config &config) {
   config.SmaInvPass = doc["SmaInvPass"] | "password";
   config.SmaBTAddress = doc["SmaBTAddress"] | "AA:BB:CC:DD:EE:FF";
   config.ScanRate = doc["ScanRate"] | 60 ;
+  config.hassDisc = doc["hassDisc"] | true ;
   
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
@@ -73,7 +74,7 @@ void saveConfiguration(const char *confFile, const Config &config) {
   doc["SmaInvPass"] = config.SmaInvPass;
   doc["SmaBTAddress"] = config.SmaBTAddress;
   doc["ScanRate"] = config.ScanRate;
-  
+  doc["hassDisc"] = config.hassDisc;
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
     Serial.println(F("Failed to write to file"));

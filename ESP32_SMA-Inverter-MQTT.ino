@@ -62,7 +62,7 @@ bool     btConnected = false;
 char timeBuf[24];
 char charBuf[CHAR_BUF_MAX];
 int  charLen = 0;
-
+bool firstTime = true;
 
 
 WiFiClient espClient;
@@ -134,11 +134,18 @@ void loop() {
       getBT_SignalStrength();
       
       // **** logon SMA ************
-      DEBUG1_PRINT("\n*** logonSMAInverter");
+      DEBUG1_PRINT("\n*** logonSMAInverter\n");
       rc = logonSMAInverter(SmaInvPass, USERGROUP);
       ReadCurrentData();
       SerialBT.disconnect();
       btConnected = false;
+      //Send Home Assistant autodiscover
+      if(config.mqttBroker.length() > 0 && config.hassDisc && firstTime){
+        hassAutoDiscover();
+        firstTime=false;
+        delay(5000);
+      }
+
       publishData();
     } // else {  // failed to connect
       // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;

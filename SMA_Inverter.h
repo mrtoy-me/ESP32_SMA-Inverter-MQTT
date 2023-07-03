@@ -68,6 +68,7 @@ struct InverterData {
     int32_t Wdc[2];
     int32_t Freq;
     int32_t Eta;
+    int32_t InvTemp;
     uint64_t EToday;
     uint64_t ETotal;
   //DayData dayData[288];
@@ -88,6 +89,7 @@ struct DisplayData {
   float Pac;
   float Uac;
   float Iac;
+  float InvTemp;
   float Udc[2];
   float Idc[2];
   float Wdc[2];

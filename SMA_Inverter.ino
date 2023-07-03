@@ -351,7 +351,8 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   break;
        
               case CoolsysTmpNom:
-                  //pInvData->Temperature = value32;
+                  pInvData->InvTemp = value32;
+                  pDispData->InvTemp = toTemp(value32);
                   DEBUG1_PRINTF("\nTemp.     %7.3f �C ", toTemp(value32));
                   break;
        
@@ -631,6 +632,7 @@ E_RC logonSMAInverter(const char *password, const uint8_t user) {
     return rc;
 }
 
+/* 
 // ******* Archive Day Data **********
 E_RC ArchiveDayData(time_t startTime) {
   DEBUG2_PRINT("\n*** ArchiveDayData ***");
@@ -732,10 +734,10 @@ E_RC ArchiveDayData(time_t startTime) {
     }
     totalWh_prev = totalWh;
   }
-  */
+  
   return hasData;
 }
-
+*/
 // ******* read SMA current data **********
 E_RC ReadCurrentData() {
   if (!btConnected) {

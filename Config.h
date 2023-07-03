@@ -24,8 +24,8 @@ uint8_t SmaBTAddress[6]= {0x00, 0x80, 0x25, 0x27, 0x38, 0xE7}; // my SMA SMC6000
 
 #include <WiFi.h>
 #include <WebServer.h>
-#include <DNSServer.h>
-#include <ESPmDNS.h>
+// #include <DNSServer.h>
+// #include <ESPmDNS.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 
@@ -38,6 +38,7 @@ struct Config {
   String SmaInvPass;
   String SmaBTAddress;
   int ScanRate;
+  bool hassDisc;
 };
 
 const char *confFile = "/config.txt";  
