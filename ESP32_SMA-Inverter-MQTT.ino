@@ -133,14 +133,19 @@ void loop() {
      
       getBT_SignalStrength();
 
-      // not sure the purpose but SBfSpot code logs off before logging on and this has provided very reliable for me: mrtoy-me 
+      // not sure the purpose but SBfSpot code logs off before logging on and this has proved very reliable for me: mrtoy-me 
       logoffSMAInverter();
 
       // **** logon SMA ************
       DEBUG1_PRINT("\n*** logonSMAInverter\n");
       rc = logonSMAInverter(SmaInvPass, USERGROUP);
       ReadCurrentData();
+      
+      //logoff before disconnecting
+      logoffSMAInverter();
+      
       SerialBT.disconnect();
+      
       btConnected = false;
       //Send Home Assistant autodiscover
       if(config.mqttBroker.length() > 0 && config.hassDisc && firstTime){
