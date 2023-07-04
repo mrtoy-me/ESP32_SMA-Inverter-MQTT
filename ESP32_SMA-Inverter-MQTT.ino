@@ -63,6 +63,7 @@ char timeBuf[24];
 char charBuf[CHAR_BUF_MAX];
 int  charLen = 0;
 bool firstTime = true;
+bool nightTime = false;
 
 
 WiFiClient espClient;
@@ -110,11 +111,14 @@ void setup() {
   // **** Loop ************
 void loop() { 
   extern BluetoothSerial SerialBT;
-
+  int adjustedScanRate;
   // connect or reconnect after connection lost 
-
+  if (nightTime)  // Scan every 15min
+    adjustedScanRate = 900000;
+  else
+    adjustedScanRate = (config.ScanRate * 1000);
   if ( !smartConfig && (nextTime < millis()) && (!btConnected)) {
-    nextTime = millis() + (config.ScanRate * 1000);
+    nextTime = millis() + adjustedScanRate;
     /* Serial.println("");
     Serial.print(millis());
     Serial.print(" + ");
@@ -146,7 +150,7 @@ void loop() {
         delay(5000);
       }
 
-      publishData();
+      nightTime = publishData();
     } // else {  // failed to connect
       // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
     // } 

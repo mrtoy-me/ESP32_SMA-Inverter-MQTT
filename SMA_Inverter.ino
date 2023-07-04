@@ -253,50 +253,79 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pDispData->Pac = tokW(value32);
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
-                  DEBUG1_PRINTF("Pac %15.3f kW %x \n GMT:%s ", tokW(value32),value32, timeBuf);
+                  DEBUG1_PRINTF("Pac %15.3f kW %x \n GMT:%s \n", tokW(value32),value32, timeBuf);
                   break;
        
               case GridMsWphsA: //SPOT_PAC1
                   pInvData->Pmax = value32;
                   pDispData->Pmax = tokW(value32);
                   //debug_watt("SPOT_PAC1", value32, datetime);
-                  DEBUG1_PRINTF("\nPmax %14.2f kW ", tokW(value32));
+                  DEBUG1_PRINTF("Pmax %14.2f kW \n", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case GridMsPhVphsA: //SPOT_UAC1
-                  pInvData->Uac = value32;
-                  pDispData->Uac = toVolt(value32);
+                  pInvData->Uac[0] = value32;
+                  pDispData->Uac[0] = toVolt(value32);
                   //debug_volt("SPOT_UAC1", value32, datetime);
-                  DEBUG1_PRINTF("\nUac %15.2f V  ", toVolt(value32));
+                  DEBUG1_PRINTF("UacA %15.2f V  \n", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
-       
+              case GridMsPhVphsB: //SPOT_UAC2
+                  pInvData->Uac[1] = value32;
+                  pDispData->Uac[1] = toVolt(value32);
+                  //debug_volt("SPOT_UAC1", value32, datetime);
+                  DEBUG1_PRINTF("UacB %15.2f V  \n", toVolt(value32));
+                  //printUnixTime(timeBuf, datetime);
+                  break;     
+                case GridMsPhVphsC: //SPOT_UAC2
+                  pInvData->Uac[2] = value32;
+                  pDispData->Uac[2] = toVolt(value32);
+                  //debug_volt("SPOT_UAC1", value32, datetime);
+                  DEBUG1_PRINTF("UacC %15.2f V  \n", toVolt(value32));
+                  //printUnixTime(timeBuf, datetime);
+                  break;       
               case GridMsAphsA_1: //SPOT_IAC1
               case GridMsAphsA:
-                  pInvData->Iac = value32;
-                  pDispData->Iac = toAmp(value32);
+                  pInvData->Iac[0] = value32;
+                  pDispData->Iac[0] = toAmp(value32);
                   //debug_amp("SPOT_IAC1", value32, datetime);
-                  DEBUG1_PRINTF("\nIac %15.2f A  ", toAmp(value32));
+                  DEBUG1_PRINTF("IacA %15.2f A  \n", toAmp(value32));
+                  //printUnixTime(timeBuf, datetime);
+                  break;
+              case GridMsAphsB_1: //SPOT_IAC1
+              case GridMsAphsB:
+                  pInvData->Iac[1] = value32;
+                  pDispData->Iac[1] = toAmp(value32);
+                  //debug_amp("SPOT_IAC1", value32, datetime);
+                  DEBUG1_PRINTF("IacB %15.2f A  \n", toAmp(value32));
+                  //printUnixTime(timeBuf, datetime);
+                  break;
+              case GridMsAphsC_1: //SPOT_IAC1
+              case GridMsAphsC:
+                  pInvData->Iac[2] = value32;
+                  pDispData->Iac[2] = toAmp(value32);
+                  //debug_amp("SPOT_IAC1", value32, datetime);
+                  DEBUG1_PRINTF("IacB %15.2f A  \n", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case GridMsHz: //SPOT_FREQ
                   pInvData->Freq = value32;
                   pDispData->Freq = toHz(value32);
-                  DEBUG1_PRINTF("\nFreq %14.2f Hz ", toHz(value32));
+                  DEBUG1_PRINTF("Freq %14.2f Hz \n", toHz(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsWatt: //SPOT_PDC1 / SPOT_PDC2
                   pInvData->Wdc[string[0]] = value32;
                   pDispData->Wdc[string[0]++] = tokW(value32);
-                  DEBUG1_PRINTF("\nPDC %15.2f kW ", tokW(value32));
+                  DEBUG1_PRINTF("PDC %15.2f kW \n", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsVol: //SPOT_UDC1 / SPOT_UDC2
-                  DEBUG1_PRINTF("\nUdc %15.2f V (%d) ", toVolt(value32),string[1]);
+                  DEBUG1_PRINTF("Udc %15.2f V (%d) \n", toVolt(value32),string[1]);
                   pInvData->Udc[string[1]] = value32;
                   pDispData->Udc[string[1]++] = toVolt(value32);
                   
@@ -313,7 +342,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                     pInvData->Eta = ((uint64_t)pInvData->Uac * (uint64_t)pInvData->Iac * 10000) /
                                     ((uint64_t)pInvData->Udc[0] * (uint64_t)pInvData->Idc[0] );
                   else pInvData->Eta = 0;
-                  DEBUG1_PRINTF("\nEfficiency %8.2f %%", toPercent(pInvData->Eta));
+                  DEBUG1_PRINTF("Efficiency %8.2f %%\n", toPercent(pInvData->Eta));
                   break;
        
               case MeteringDyWhOut: //SPOT_ETODAY
@@ -322,7 +351,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pInvData->EToday = value64;
                   pDispData->EToday = tokWh(value64);
                   //debug_kwh("SPOT_ETODAY", value64, datetime);
-                  DEBUG1_PRINTF("\nE-Today %11.3f kWh", tokWh(value64));
+                  DEBUG1_PRINTF("E-Today %11.3f kWh\n", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
@@ -332,28 +361,28 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pInvData->ETotal = value64;
                   pDispData->ETotal = tokWh(value64);
                   //debug_kwh("SPOT_ETOTAL", value64, datetime);
-                  DEBUG1_PRINTF("\nE-Total %11.3f kWh", tokWh(value64));
+                  DEBUG1_PRINTF("E-Total %11.3f kWh\n", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case MeteringTotOpTms: //SPOT_OPERTM
                   pInvData->OperationTime = value64;
                   //debug_hour("SPOT_OPERTM", value64, datetime);
-                  DEBUG1_PRINTF("\nOperTime  %7.3f h  ", toHour(value64));
+                  DEBUG1_PRINTF("OperTime  %7.3f h \n", toHour(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case MeteringTotFeedTms: //SPOT_FEEDTM
                   pInvData->FeedInTime = value64;
                   //debug_hour("SPOT_FEEDTM", value64, datetime);
-                  DEBUG1_PRINTF("\nFeedTime  %7.3f h  ", toHour(value64));
+                  DEBUG1_PRINTF("FeedTime  %7.3f h  \n", toHour(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case CoolsysTmpNom:
                   pInvData->InvTemp = value32;
                   pDispData->InvTemp = toTemp(value32);
-                  DEBUG1_PRINTF("\nTemp.     %7.3f �C ", toTemp(value32));
+                  DEBUG1_PRINTF("Temp.     %7.3f C \n", toTemp(value32));
                   break;
        
               case MeteringGridMsTotWOut:
@@ -363,6 +392,9 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
               case MeteringGridMsTotWIn:
                   //pInvData->MeteringGridMsTotWIn = value32;
                   break;
+              default:
+
+                DEBUG1_PRINTF("Caught: %x %d\n",lri,value32);
               }
             } //for
           } else {

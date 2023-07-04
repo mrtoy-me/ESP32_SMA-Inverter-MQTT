@@ -61,8 +61,8 @@ struct InverterData {
     uint8_t NetID;
     int32_t Pmax;
     int32_t Pac;
-    int32_t Uac;
-    int32_t Iac;
+    int32_t Uac[3];
+    int32_t Iac[3];
     int32_t Udc[2];
     int32_t Idc[2];
     int32_t Wdc[2];
@@ -87,8 +87,8 @@ struct DisplayData {
   float BTSigStrength;
   float Pmax;
   float Pac;
-  float Uac;
-  float Iac;
+  float Uac[3];
+  float Iac[3];
   float InvTemp;
   float Udc[2];
   float Idc[2];

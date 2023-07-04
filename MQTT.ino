@@ -301,12 +301,14 @@ void brokerConnect() {
     }
   }
 }
-void publishData(){
+
+// Returns true if nighttime
+bool publishData(){
   extern InverterData *pInvData;
   extern DisplayData *pDispData;
 
-  if(config.mqttBroker.length() < 1 || !(pDispData->Pac > 0)){
-    return;
+  if(config.mqttBroker.length() < 1 ){
+    return(false);
   }
 
   brokerConnect();
@@ -316,11 +318,11 @@ void publishData(){
 
 
     snprintf(theData,sizeof(theData)-1,
-    "{ \"Serial\": %d, \"BTStrength\": %4.1f, \"Uac\": %5.1f, \"Iac\": %4.1f, \"Pac\": %3.1f, \"Udc\": [ %5.1f , %5.1f ], \"Idc\": [ %4.1f , %4.1f ], \"Wdc\": [%5.1f , %5.1f ], \"Freq\": %5.2f, \"EToday\": %5.1f, \"ETotal\": %15.1f }"
+    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f }"
  , pInvData->Serial
  , pDispData->BTSigStrength
- , pDispData->Uac
- , pDispData->Iac
+ , pDispData->Uac[0],pDispData->Uac[1],pDispData->Uac[2]
+ , pDispData->Iac[0],pDispData->Iac[1],pDispData->Iac[1]
  , pDispData->Pac
  , pDispData->Udc[0], pDispData->Udc[1]
  , pDispData->Idc[0], pDispData->Idc[1]
@@ -344,7 +346,11 @@ void publishData(){
       DEBUG1_PRINT("Failed Publish\n");
     client.endPublish();
   }
-  
+  // If Power is zero, it's night time
+  if (pDispData->Pac > 0) 
+    return(false);
+  else
+    return(true);
 }
 
 // Set up the topics in home assistant
@@ -355,29 +361,37 @@ void hassAutoDiscover(){
   brokerConnect();
   
   snprintf(topic,sizeof(topic)-1, "%s-%d",config.mqttTopic.c_str(), pInvData->Serial);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s AC Power\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Pac}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s AC Power\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Pac }}\" }",topic,topic);
   sendLongMQTT(topic,"Pac",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s AC Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Iac}}\" }",topic,topic);
-  sendLongMQTT(topic,"Iac",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s AC Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Uac}}\" }",topic,topic);
-  sendLongMQTT(topic,"Uac",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"frequency\", \"name\": \"%s AC Frequency\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"Hz\", \"value_template\": \"{{ value_json.Freq}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s A Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Iac[0] }}\" }",topic,topic);
+  sendLongMQTT(topic,"IacA",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s B Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Iac[1] }}\" }",topic,topic);
+  sendLongMQTT(topic,"IacB",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s C Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Iac[2] }}\" }",topic,topic);
+  sendLongMQTT(topic,"IacC",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s A Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Uac[0] }}\" }",topic,topic);
+  sendLongMQTT(topic,"UacA",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s B Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Uac[1] }}\" }",topic,topic);
+  sendLongMQTT(topic,"UacB",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s C Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Uac[2] }}\" }",topic,topic);
+  sendLongMQTT(topic,"UacC",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"frequency\", \"name\": \"%s AC Frequency\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"Hz\", \"value_template\": \"{{ value_json.Freq }}\" }",topic,topic);
   sendLongMQTT(topic,"Freq",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[0]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[0] }}\" }",topic,topic);
   sendLongMQTT(topic,"Wdc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[1]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\", \"value_template\": \"{{ value_json.Wdc[1] }}\" }",topic,topic);
   sendLongMQTT(topic,"Wdc2",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[0]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[0] }}\" }",topic,topic);
   sendLongMQTT(topic,"Udc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[1]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\", \"value_template\": \"{{ value_json.Udc[1] }}\" }",topic,topic);
   sendLongMQTT(topic,"Udc2",tmpstr);
-    snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[0]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[0] }}\" }",topic,topic);
   sendLongMQTT(topic,"Idc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[1]}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\", \"value_template\": \"{{ value_json.Idc[1] }}\" }",topic,topic);
   sendLongMQTT(topic,"Idc2",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Today\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.EToday}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Today\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.EToday }}\" }",topic,topic);
   sendLongMQTT(topic,"EToday",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Total\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.ETotal}}\" }",topic,topic);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Total\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.ETotal }}\" }",topic,topic);
   sendLongMQTT(topic,"ETotal",tmpstr);
 }
 
