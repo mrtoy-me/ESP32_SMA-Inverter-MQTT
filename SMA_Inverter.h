@@ -80,6 +80,8 @@ struct InverterData {
     time_t   LastTime;
     uint64_t OperationTime;
     uint64_t FeedInTime;
+    int32_t DevStatus;
+    int32_t GridRelay;
     E_RC     status;
 };
 
@@ -96,6 +98,7 @@ struct DisplayData {
   float Freq;
   float EToday;
   float ETotal;
+  char DevStatus[10];
 };
 
 enum getInverterDataType {

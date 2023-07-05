@@ -318,7 +318,7 @@ bool publishData(){
 
 
     snprintf(theData,sizeof(theData)-1,
-    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f }"
+    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f, \"InvTemp\": %4.2f, \"DevStatus\": %d, \"GridRelay\": %d }"
  , pInvData->Serial
  , pDispData->BTSigStrength
  , pDispData->Uac[0],pDispData->Uac[1],pDispData->Uac[2]
@@ -329,7 +329,11 @@ bool publishData(){
  , pDispData->Udc[0] * pDispData->Idc[0] / 1000 , pDispData->Udc[1] * pDispData->Idc[1] / 1000
  , pDispData->Freq
  , pDispData->EToday
- , pDispData->ETotal);
+ , pDispData->ETotal
+ , pDispData->InvTemp
+ , pInvData->DevStatus
+ , pInvData->GridRelay
+);
 
 
     // strcat(theData,"}");
@@ -393,6 +397,12 @@ void hassAutoDiscover(){
   sendLongMQTT(topic,"EToday",tmpstr);
   snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Total\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\", \"value_template\": \"{{ value_json.ETotal }}\" }",topic,topic);
   sendLongMQTT(topic,"ETotal",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"temperature\", \"name\": \"%s Inverter Temperature\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"C\", \"value_template\": \"{{ value_json.InvTemp }}\" }",topic,topic);
+  sendLongMQTT(topic,"InvTemp",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Device Status\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"value_template\": \"{{ value_json.DevStatus }}\" }",topic,topic);
+  sendLongMQTT(topic,"DevStatus",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Grid Relay Status\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"value_template\": \"{{ value_json.GridRelay }}\" }",topic,topic);
+  sendLongMQTT(topic,"GridRelay",tmpstr);
 }
 
 void sendLongMQTT(char *topic,char *postscript,char *msg){

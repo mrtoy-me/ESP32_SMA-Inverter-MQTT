@@ -384,11 +384,17 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   pDispData->InvTemp = toTemp(value32);
                   DEBUG1_PRINTF("Temp.     %7.3f C \n", toTemp(value32));
                   break;
-       
+              case OperationHealth:
+                  pInvData->DevStatus = value32;
+                  DEBUG1_PRINTF("Device Status:    %d  \n", value32);
+                  break;
+              case OperationGriSwStt:
+                  pInvData->GridRelay = value32;
+                  DEBUG1_PRINTF("Grid Relay:    %d  \n", value32);
+                  break;
               case MeteringGridMsTotWOut:
                   //pInvData->MeteringGridMsTotWOut = value32;
                   break;
-       
               case MeteringGridMsTotWIn:
                   //pInvData->MeteringGridMsTotWIn = value32;
                   break;
@@ -794,6 +800,18 @@ E_RC ReadCurrentData() {
   }
   if ((getInverterData(SpotGridFrequency)) != E_OK) {
     charLen += snprintf(charBuf+charLen, CHAR_BUF_MAX-charLen, "SpotGridFrequency error!\n");
+    return E_NODATA;
+  }
+  if ((getInverterData(InverterTemp)) != E_OK) {
+    charLen += snprintf(charBuf+charLen, CHAR_BUF_MAX-charLen, "InverterTemp error!\n");
+    return E_NODATA;
+  }
+  if ((getInverterData(DeviceStatus)) != E_OK) {
+    charLen += snprintf(charBuf+charLen, CHAR_BUF_MAX-charLen, "Device Status error!\n");
+    return E_NODATA;
+  }
+  if ((getInverterData(GridRelayStatus)) != E_OK) {
+    charLen += snprintf(charBuf+charLen, CHAR_BUF_MAX-charLen, "Grid Relay Status error!\n");
     return E_NODATA;
   }
 
