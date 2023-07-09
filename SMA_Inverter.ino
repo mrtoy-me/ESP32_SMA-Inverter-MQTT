@@ -333,7 +333,7 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
                   break;
        
               case DcMsAmp: //SPOT_IDC1 / SPOT_IDC2
-                  DEBUG1_PRINTF("Idc %15.2f A (%d) ", toAmp(value32),string[2]);
+                  DEBUG1_PRINTF("Idc %15.2f A (%d)\n", toAmp(value32),string[2]);
                   pInvData->Idc[string[2]] = value32;
                   pDispData->Idc[string[2]++] = toAmp(value32);
 

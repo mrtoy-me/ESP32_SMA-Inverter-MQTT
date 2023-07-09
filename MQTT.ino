@@ -357,6 +357,35 @@ bool publishData(){
     return(true);
 }
 
+void logViaMQTT(char *logStr){
+  extern InverterData *pInvData;
+  char tmp[1000];
+  if(config.mqttBroker.length() < 1 ){
+    return;
+  }
+  snprintf(tmp,sizeof(tmp),"{ \"Log\": \"%s\" }",logStr);
+  brokerConnect();
+  
+  if (client.connected()){
+
+    // strcat(theData,"}");
+    char topic[100];
+    snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
+    DEBUG1_PRINT(topic);
+    DEBUG1_PRINT(" = ");
+    DEBUG1_PRINTF("Log%s\n",logStr);
+    int len = strlen(tmp);
+    client.beginPublish(topic,len,false);
+    if (client.print(tmp))
+      DEBUG1_PRINT("Published\n");
+    else
+      DEBUG1_PRINT("Failed Publish\n");
+    client.endPublish();
+  }
+  
+}
+
+
 // Set up the topics in home assistant
 void hassAutoDiscover(){
   char tmpstr[1000];
@@ -403,6 +432,10 @@ void hassAutoDiscover(){
   sendLongMQTT(topic,"DevStatus",tmpstr);
   snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Grid Relay Status\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"value_template\": \"{{ value_json.GridRelay }}\" }",topic,topic);
   sendLongMQTT(topic,"GridRelay",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Bluetooth\" , \"state_topic\": \"homeassistant/sensor/%s/state\",\"unit_of_measurement\": \"%%\", \"value_template\": \"{{ value_json.BTStrength }}\" }",topic,topic);
+  sendLongMQTT(topic,"Bluetooth",tmpstr);
+  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Log\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"value_template\": \"{{ value_json.Log }}\" }",topic,topic);
+  sendLongMQTT(topic,"Log",tmpstr);
 }
 
 void sendLongMQTT(char *topic,char *postscript,char *msg){

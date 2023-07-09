@@ -119,6 +119,8 @@ void loop() {
     adjustedScanRate = (config.ScanRate * 1000);
   if ( !smartConfig && (nextTime < millis()) && (!btConnected)) {
     nextTime = millis() + adjustedScanRate;
+    if(nightTime)
+      DEBUG1_PRINT("Night time - 15min scans\n");
     /* Serial.println("");
     Serial.print(millis());
     Serial.print(" + ");
