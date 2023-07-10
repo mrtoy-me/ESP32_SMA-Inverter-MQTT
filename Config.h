@@ -19,7 +19,9 @@ uint8_t SmaBTAddress[6]= {0x00, 0x80, 0x25, 0x27, 0x38, 0xE7}; // my SMA SMC6000
 */
 // Configuration struct
 
-
+// Uncomment to logoff the inverter after each connection
+// Helps with connection reliabiolity on some inverters
+// #define LOGOFF true
 
 
 #include <WiFi.h>

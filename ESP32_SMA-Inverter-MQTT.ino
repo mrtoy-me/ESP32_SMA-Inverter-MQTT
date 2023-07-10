@@ -99,7 +99,7 @@ void setup() {
                 pInvData->BTAddress[5], pInvData->BTAddress[4], pInvData->BTAddress[3],
                 pInvData->BTAddress[2], pInvData->BTAddress[1], pInvData->BTAddress[0]);
     // *** Start BT
-    SerialBT.begin("ESP32test", true);   // "true" creates this device as a BT Master.
+    SerialBT.begin("ESP32toSMA", true);   // "true" creates this device as a BT Master.
     SerialBT.setPin(&BTPin[0]); 
   }
   // *** Start WIFI and WebServer
@@ -121,34 +121,32 @@ void loop() {
     nextTime = millis() + adjustedScanRate;
     if(nightTime)
       DEBUG1_PRINT("Night time - 15min scans\n");
-    /* Serial.println("");
-    Serial.print(millis());
-    Serial.print(" + ");
-    Serial.print(nextInterval);
-    Serial.print(" = ");
-    Serial.println(nextTime); */
+
     pcktID = 1;
     // **** Connect SMA **********
-    DEBUG1_PRINT("\nConnecting SMA inverter: ");
+    DEBUG1_PRINT("Connecting SMA inverter: \n");
     if (SerialBT.connect(SmaBTAddress)) {
       btConnected = true;
-      // nextInterval = 60*1000; // 60 sec.
+      
       // **** Initialize SMA *******
-      DEBUG1_PRINTLN("connected");
+      DEBUG1_PRINTLN("BT connected \n");
       E_RC rc = initialiseSMAConnection();
-     
+      DEBUG2_PRINTF("SMA %d \n",rc);
       getBT_SignalStrength();
 
+#ifdef LOGOFF
       // not sure the purpose but SBfSpot code logs off before logging on and this has proved very reliable for me: mrtoy-me 
       logoffSMAInverter();
-
+#endif
       // **** logon SMA ************
-      DEBUG1_PRINT("\n*** logonSMAInverter\n");
+      DEBUG1_PRINT("*** logonSMAInverter\n");
       rc = logonSMAInverter(SmaInvPass, USERGROUP);
+      DEBUG2_PRINTF("Logon return code %d\n",rc);
       ReadCurrentData();
-      
+#ifdef LOGOFF    
       //logoff before disconnecting
       logoffSMAInverter();
+#endif
       
       SerialBT.disconnect();
       
@@ -156,14 +154,15 @@ void loop() {
       //Send Home Assistant autodiscover
       if(config.mqttBroker.length() > 0 && config.hassDisc && firstTime){
         hassAutoDiscover();
+        logViaMQTT("First boot");
         firstTime=false;
         delay(5000);
       }
 
       nightTime = publishData();
-    } // else {  // failed to connect
-      // if (nextInterval<10*60*1000) nextInterval += 1*60*1000;
-    // } 
+    } else {  
+      logViaMQTT("Bluetooth failed to connect");
+    } 
   }
   // DEBUG1_PRINT(".");
   wifiLoop();

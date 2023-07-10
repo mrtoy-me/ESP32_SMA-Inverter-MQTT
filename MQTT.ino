@@ -373,7 +373,7 @@ void logViaMQTT(char *logStr){
     snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
     DEBUG1_PRINT(topic);
     DEBUG1_PRINT(" = ");
-    DEBUG1_PRINTF("Log%s\n",logStr);
+    DEBUG1_PRINTF(" %s\n",tmp);
     int len = strlen(tmp);
     client.beginPublish(topic,len,false);
     if (client.print(tmp))

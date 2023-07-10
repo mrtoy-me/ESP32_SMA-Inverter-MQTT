@@ -29,4 +29,5 @@ void brokerConnect();
 bool publishData();
 void hassAutoDiscover();
 void sendLongMQTT(char *msg);
+void logViaMQTT(char *logStr);
 #endif
