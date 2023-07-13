@@ -150,6 +150,7 @@ void loop() {
       
       SerialBT.disconnect();
       
+    
       btConnected = false;
       //Send Home Assistant autodiscover
       if(config.mqttBroker.length() > 0 && config.hassDisc && firstTime){

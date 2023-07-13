@@ -36,6 +36,8 @@ extern PubSubClient client;
 int smartConfig = 1; 
 WebServer webServer(80);
 char sapString[21];
+unsigned long previousMillis = 0;
+unsigned long interval = 30000;
 
 void wifiStartup(){
   // Build Hostname
@@ -130,6 +132,20 @@ void connectAP(){
 
 
 void wifiLoop(){
+  // Attempt to reconnect to Wifi if disconnected
+  if ( WiFi.status() != WL_CONNECTED) {
+    
+    WiFi.disconnect();
+    WiFi.reconnect();
+  }
+  unsigned long currentMillis = millis();
+  // if WiFi is down, try reconnecting
+  if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >=interval)) {
+    DEBUG1_PRINT("Reconnecting to WiFi...\n");
+    WiFi.disconnect();
+    WiFi.reconnect();
+    previousMillis = currentMillis;
+  }
   webServer.handleClient();  
 }
 
@@ -138,6 +154,7 @@ void formPage () {
   char *responseHTML;
   extern InverterData *pInvData;
   extern DisplayData *pDispData;
+  char fulltopic[100];
 
   responseHTML = (char *)malloc(10000);
   DEBUG1_PRINT("Connect formpage\n");
@@ -176,18 +193,22 @@ table, th, td {\
   sprintf(tempstr, "<TR><TD>Inverter scan rate:</TD><TD> <input type=\"text\" name=\"ScanRate\" value=\"%d\"></TD><TR>\n\n",config.ScanRate);
   strcat(responseHTML, tempstr);
 
-  if (config.hassDisc)
+  if (config.hassDisc) {
     strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\" checked ></TD><TR>\n");
-  else
+    snprintf(fulltopic,sizeof(fulltopic),"homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(),pInvData->Serial);
+  } else {
     strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\"></TD><TR>\n");
-
+    snprintf(fulltopic,sizeof(fulltopic),"%s-%d/state",config.mqttTopic.c_str(),pInvData->Serial);
+  }
   strcat(responseHTML, "</TABLE>");
   strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form><BR> <A href=\"/smartconfig\">Enable ESP Touch App smart config</A><BR>");
 
 
   strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
+  
+  
   snprintf(tempstr, sizeof(tempstr),
-"<tr><td>MQTT Topic</td><td>%s-%d</td></tr>\n\
+"<tr><td>MQTT Topic</td><td>%s</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
   <tr><td>Uac</td><td>%15.1f V</td></tr>\n\
  <tr><td>Iac</td><td>%15.1f A</td></tr>\n\
@@ -195,8 +216,7 @@ table, th, td {\
  <tr><td>Udc</td><td>String 1: %15.1f V, String 2: %15.1f V</td></tr>\n\
  <tr><td>Idc</td><td>String 1: %15.1f A, String 2: %15.1f A</td></tr>\n\
  <tr><td>Wdc</td><td>String 1: %15.1f kW, String 2: %15.1f kW</td></tr>\n"
- , config.mqttTopic.c_str()
- , pInvData->Serial
+ , fulltopic
  , pDispData->BTSigStrength
  , pDispData->Uac
  , pDispData->Iac
@@ -338,7 +358,10 @@ bool publishData(){
 
     // strcat(theData,"}");
     char topic[100];
-    snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
+    if (config.hassDisc)
+      snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
+    else
+      snprintf(topic,sizeof(topic), "%s-%d/state",config.mqttTopic.c_str(), pInvData->Serial);
     DEBUG1_PRINT(topic);
     DEBUG1_PRINT(" = ");
     DEBUG1_PRINTF("%s\n",theData);
