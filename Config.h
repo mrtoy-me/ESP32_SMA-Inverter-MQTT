@@ -13,7 +13,6 @@
 // SMA login password for UG_USER or UG_INSTALLER always 12 char. Unused=0x00
 #define USERGROUP UG_USER
 
-*/
 // Configuration struct
 
 // Uncomment to logoff the inverter after each connection

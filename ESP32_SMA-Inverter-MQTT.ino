@@ -64,6 +64,7 @@ char charBuf[CHAR_BUF_MAX];
 int  charLen = 0;
 bool firstTime = true;
 bool nightTime = false;
+bool dayNight = false;
 
 
 WiFiClient espClient;
@@ -154,13 +155,23 @@ void loop() {
       btConnected = false;
       //Send Home Assistant autodiscover
       if(config.mqttBroker.length() > 0 && config.hassDisc && firstTime){
-        hassAutoDiscover();
+        hassAutoDiscover(config.ScanRate *2);
         logViaMQTT("First boot");
         firstTime=false;
         delay(5000);
       }
 
       nightTime = publishData();
+      if ( nightTime != dayNight) {
+        if (config.mqttBroker.length() > 0) {
+          if (nightTime) { // Change the expire time in home Assistant
+            hassAutoDiscover(1800);
+          } else {
+            hassAutoDiscover(config.ScanRate *2);
+          }
+        }
+        dayNight = nightTime;
+      }
     } else {  
       logViaMQTT("Bluetooth failed to connect");
     } 

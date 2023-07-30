@@ -561,7 +561,7 @@ E_RC getInverterData(enum getInverterDataType type) {
 
 //-------------------------------------------------------------------------
 bool getBT_SignalStrength() {
-  DEBUG2_PRINT("\n\n*** SignalStrength ***");
+  DEBUG2_PRINT("*** SignalStrength ***\n");
   writePacketHeader(pcktBuf, 0x03, pInvData->BTAddress);
   writeByte(pcktBuf,0x05);
   writeByte(pcktBuf,0x00);
@@ -570,7 +570,7 @@ bool getBT_SignalStrength() {
 
   getPacket(pInvData->BTAddress, 4);
   pDispData->BTSigStrength = ((float)BTrdBuf[22] * 100.0f / 255.0f);
-  DEBUG1_PRINTF("BT-Signal %9.1f %%", pDispData->BTSigStrength );
+  DEBUG1_PRINTF("BT-Signal %9.1f %%\n", pDispData->BTSigStrength );
   return true;
 }
 
