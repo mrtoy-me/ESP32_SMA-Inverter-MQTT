@@ -207,8 +207,7 @@ table, th, td {\
   strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
   
   
-  snprintf(tempstr, sizeof(tempstr),
-"<tr><td>MQTT Topic</td><td>%s</td></tr>\n\
+  snprintf(tempstr, sizeof(tempstr), "<tr><td>MQTT Topic</td><td>%s</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
   <tr><td>Uac</td><td>%15.1f V</td></tr>\n\
  <tr><td>Iac</td><td>%15.1f A</td></tr>\n\
@@ -227,8 +226,7 @@ table, th, td {\
 
   strcat(responseHTML, tempstr);
 
-  snprintf(tempstr, sizeof(tempstr),
-"<tr><td>Frequency</td><td>%5.2f Hz</td></tr>\n\
+  snprintf(tempstr, sizeof(tempstr),"<tr><td>Frequency</td><td>%5.2f Hz</td></tr>\n\
  <tr><td>E-Today</td><td>%15.1f kWh</td></tr>\n\
  <tr><td>E-Total</td><td>%15.1f kWh</td></tr>\n "
  , pDispData->Freq
