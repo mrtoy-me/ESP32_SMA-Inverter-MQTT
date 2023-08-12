@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "Utils.h"
+#include "SMA_Utils.h"
 
 void HexDump(uint8_t *buf, int count, int radix, uint8_t c) {
   int i, j;

@@ -1,3 +1,7 @@
+#ifndef SMA_WIFI_CONFIG_VALUES_H
+#define SMA_WIFI_CONFIG_VALUES_H
+
+
 //*** debug ****************
 // 0=no Debug; 
 // 1=values only; 
@@ -9,15 +13,22 @@
 
 // SMA login password for UG_USER or UG_INSTALLER always 12 char. Unused=0x00
 #define USERGROUP UG_USER
-const char SmaInvPass[]={'P','a','s','s','w','o','r','d',0,0,0,0}; 
 
-// SMA blutooth address -> adapt to your system
-uint8_t SmaBTAddress[6]= {0x00, 0x80, 0x25, 0x29, 0xEB, 0xD3}; // my SMA SMC6000TL 00:80:25:29:eb:d3 
- 
-// Webserver -> adapt to your system
-#define SMA_WEBSERVER
-#ifdef SMA_WEBSERVER
-  const char *ssid        = "MySsid";
-  const char *password    = "MyPassord";
+#define WIFI_SSID "ssid"
+#define WIFI_PASSWORD "ssidpassword"
+
+#define MQTT_BROKER "192.168.0.100"
+#define MQTT_PORT  1883
+#define MQTT_USER  "mqttuser"
+#define MQTT_PASS  "mqttpass"
+#define MQTT_topic "SMA"
+#define SMA_PASS  "inverterpass"
+#define SMA_BTADDRESS "00:80:25:00:00:00"
+#define SCAN_RATE  60
+#define HASS_DISCOVERY false
+#define TIMEZONE ""
+#define NTPHOSTNAME "pool.ntp.org"
+
+
+
 #endif
-
