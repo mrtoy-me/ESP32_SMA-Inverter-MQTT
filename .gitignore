@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 src/Config.h
+src/config_values.h

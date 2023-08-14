@@ -41,7 +41,6 @@ public:
      void sendLongMQTT(const char *topic, const char *postscript, const char *msg);
      void logViaMQTT(const char *logStr);
 
-
     String getTime();
 
     String sapString = "";
@@ -58,7 +57,6 @@ private:
     ~ESP32_SMA_MQTT() {}
 
 
-    friend class ESP32_SMA_Inverter_MQTT;
 
 };
 

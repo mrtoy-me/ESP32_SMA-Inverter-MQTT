@@ -22,7 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <Arduino.h>
 #include "SMA_Inverter.h"
+#include "SMA_utils.h"
+#include "BluetoothSerial.h"
+//#include "ESP32_SMA_Inverter_App.h"
 
 
 int32_t  value32 = 0;
