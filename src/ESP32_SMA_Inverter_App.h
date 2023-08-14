@@ -2,10 +2,24 @@
 #ifndef ESP32_SMA_INVERTER_APP_H
 #define ESP32_SMA_INVERTER_APP_H
 
+#include <Arduino.h>
+#include <Esp.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
-#include <PubSubClient.h>
+#include <TBPubSubClient.h>
 
+#include <BluetoothSerial.h>
+
+#include "ESP32_SMA_MQTT.h"
+#include "ESP32_SMA_Inverter_App.h"
+#include "config_values.h"
+
+
+#include <logging.hpp>
+#include <ets-appender.hpp>
+#include <udp-appender.hpp>
+
+#include "SMA_Utils.h"
 #include "SMA_Inverter.h"
 #include "ESP32Loggable.h"
 

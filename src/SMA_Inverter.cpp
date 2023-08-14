@@ -22,19 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <Arduino.h>
 #include "SMA_Inverter.h"
-#include "SMA_utils.h"
-#include "BluetoothSerial.h"
-//#include "ESP32_SMA_Inverter_App.h"
-
 
 int32_t  value32 = 0;
 int64_t  value64 = 0;
 uint64_t totalWh = 0;
 uint64_t totalWh_prev = 0;
 time_t   dateTime = 0;
-
 
 const char btPin[] = {'0','0','0','0',0}; // BT pin Always 0000. (not login passcode!)
 

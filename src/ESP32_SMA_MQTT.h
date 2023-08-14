@@ -3,14 +3,23 @@
 #define ESP32_SMA_MQTT_H
 
 
+
+
+#include <Arduino.h>
 #include <WiFi.h>
+#include <WebServer.h>
 
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <LittleFS.h>
-#include <WebServer.h>
+
+#include "SMA_Inverter.h"
+#include "SMA_Utils.h"
+#include "ESP32_SMA_Inverter_App.h"
+#include "config_values.h"
 #include "ESP32Loggable.h"
+
 
 class ESP32_SMA_MQTT : public ESP32Loggable  {
 

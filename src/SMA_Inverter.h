@@ -25,10 +25,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
+#include <Arduino.h>
+#include "SMA_Inverter.h"
+#include "SMA_utils.h"
+#include "BluetoothSerial.h"
 
 #include "ESP32Loggable.h"
-#include "BluetoothSerial.h"
 
 #define tokWh(value64)    (double)(value64)/1000
 #define tokW(value32)     (float)(value32)/1000

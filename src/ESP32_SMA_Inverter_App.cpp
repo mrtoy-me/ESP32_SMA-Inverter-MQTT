@@ -22,24 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <Arduino.h>
-#include <Esp.h>
-#include <BluetoothSerial.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
-#include <PubSubClient.h>
-//#define RX_QUEUE_SIZE 2048
-//#define TX_QUEUE_SIZE 64
-#include <logging.hpp>
-#include <ets-appender.hpp>
-#include <udp-appender.hpp>
 
-#include "SMA_Utils.h"
-#include "SMA_Inverter.h"
-
-#include "ESP32_SMA_MQTT.h"
 #include "ESP32_SMA_Inverter_App.h"
-#include "config_values.h"
+
+
 
 ESP32_SMA_Inverter_App& smaInverterApp = ESP32_SMA_Inverter_App::getInstance();
 ESP32_SMA_Inverter& smaInverter = ESP32_SMA_Inverter::getInstance();

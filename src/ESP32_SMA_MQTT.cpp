@@ -22,13 +22,7 @@ SOFTWARE.
 */
 // Wifi Functions choose between Station or SoftAP
 
-#include <Arduino.h>
 #include "ESP32_SMA_MQTT.h"
-#include "SMA_Inverter.h"
-#include "SMA_Utils.h"
-#include "ESP32_SMA_Inverter_App.h"
-#include "config_values.h"
-#include "ESP32Loggable.h"
 
 #define FORMAT_LITTLEFS_IF_FAILED 
 
