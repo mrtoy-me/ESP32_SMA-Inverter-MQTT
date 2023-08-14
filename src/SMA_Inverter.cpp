@@ -207,9 +207,44 @@ void ESP32_SMA_Inverter::writePacketHeader(uint8_t *buf, const uint16_t control,
     buf[pcktBufPos++] = (uint8_t)(control & 0xFF);
     buf[pcktBufPos++] = (uint8_t)(control >> 8);
 }
+
+
+bool ESP32_SMA_Inverter::isCrcValid(uint8_t lb, uint8_t hb)
+{
+  bool bRet = false;
+  
+    if (((lb == 0x7E) || (hb == 0x7E) || (lb == 0x7D) || (hb == 0x7D)))
+      bRet = false;
+    else
+      bRet = true;
+
+  logD("isCrcValid at pcktBufPos: %d", bRet);
+  return bRet;
+}
+
+
+uint32_t ESP32_SMA_Inverter::getattribute(uint8_t *pcktbuf)
+{
+    const int recordsize = 40;
+    uint32_t tag=0, attribute=0, prevTag=0;
+    for (int idx = 8; idx < recordsize; idx += 4)
+    {      
+        attribute = ((uint32_t)get_u32(pcktbuf + idx));
+        tag = attribute & 0x00FFFFFF;
+        if (tag == 0xFFFFFE) // count on prevTag to contain a value to succeed
+            break;
+        if ((attribute >> 24) == 1) //only take into account meaningfull values here 
+            if (prevTag==0) prevTag = tag; //interested in pop of vector, so only (possible) first value is interesting here if anything was added at back
+    }
+
+    return prevTag;
+}
+
+
 // ***********************************************
 E_RC ESP32_SMA_Inverter::getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
   //extern uint8_t sixff[6];
+  do {
     pcktID++;
     writePacketHeader(pcktBuf, 0x01, sixff); //addr_unknown);
     //if (invData.SUSyID == SID_SB240)
@@ -221,6 +256,8 @@ E_RC ESP32_SMA_Inverter::getInverterDataCfl(uint32_t command, uint32_t first, ui
     write32(pcktBuf, last);
     writePacketTrailer(pcktBuf);
     writePacketLength(pcktBuf);
+
+  } while (!isCrcValid(pcktBuf[pcktBufPos - 3], pcktBuf[pcktBufPos - 2]));
 
     BTsendPacket(pcktBuf);
     int string[3] = { 0,0,0 }; //String number count
@@ -409,10 +446,12 @@ E_RC ESP32_SMA_Inverter::getInverterDataCfl(uint32_t command, uint32_t first, ui
                   logI("Temp.     %7.3f C \n", toTemp(value32));
                   break;
               case OperationHealth:
+                  value32 = getattribute(recptr);
                   invData.DevStatus = value32;
                   logI("Device Status:    %d  \n", value32);
                   break;
               case OperationGriSwStt:
+                  value32 = getattribute(recptr);
                   invData.GridRelay = value32;
                   logI("Grid Relay:    %d  \n", value32);
                   break;

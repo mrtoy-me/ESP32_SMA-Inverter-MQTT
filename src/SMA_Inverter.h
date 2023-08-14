@@ -49,16 +49,15 @@ SOFTWARE.
 
 
 #define ARCH_DAY_SIZE 288
+#define COMMBUFSIZE 2048
 #define CHAR_BUF_MAX 2048
+#define MAX_PCKT_BUF_SIZE COMMBUFSIZE
 
 //unsigned char espBTAddress[6] = {0xE6,0x72,0xCC,0xD1,0x08,0xF0}; // BT address ESP32 F0:08:D1:CC:72:E6
 //                        \|E6\|72\|CC\|D1\|08\|F0 };  // BT address  ESP32 F0:08:D1:CC:72:E6
 //                        \|d3\|eb\|29\|25\|80\|00 };  // //SMC 6000: 00:80:25:29:eb:d3
 
 #define BTH_L2SIGNATURE 0x656003FF
-#define MAX_PCKT_BUF_SIZE 512
-
-
 
 
 
@@ -275,6 +274,9 @@ class ESP32_SMA_Inverter : public ESP32Loggable {
     void writePacketTrailer(uint8_t *btbuffer);
     void writePacketLength(uint8_t *buf);
     bool validateChecksum();
+    bool isCrcValid(uint8_t lb, uint8_t hb);
+
+    uint32_t getattribute(uint8_t *pcktbuf);
 
     void setPcktID(uint8_t pPcktID) {
         pcktID = pPcktID;
