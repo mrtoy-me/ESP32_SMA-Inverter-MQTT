@@ -91,18 +91,15 @@ void ESP32_SMA_MQTT::wifiStartup(){
   //overriding ssid and hostname
   logD("wifi begin with ssid(%s) and password (.......)", WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD); 
-#else
-  WiFi.begin();
-#endif
-
   for  (int w=0; w<=10 || WiFi.status() != WL_CONNECTED; w++) {
     delay(500);
     logD(".wifi.");
   }
+#else
+  WiFi.begin();
+#endif
 
   //delay(2000);
-
-
   logD("Using config");
 
   AppConfig& config = ESP32_SMA_Inverter_MQTT::getInstance().appConfig;
