@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "ESP32_SMA_MQTT.h"
 
-#define FORMAT_LITTLEFS_IF_FAILED 
+#define FORMAT_LITTLEFS_IF_FAILED
 
 
 //ESP32_SMA_Inverter_App_Config& appConfigInstance = ESP32_SMA_Inverter_App_Config::getInstance();
@@ -66,7 +66,7 @@ String ESP32_SMA_MQTT::getTime() {
     if(getLocalTime(&timeinfo)) {
       char charTime[64];
       strftime(charTime, sizeof(charTime), "%A, %B %d %Y %H:%M:%S", &timeinfo);
-      logD("now : %s ", charTime);  
+      logD("now : %s ", charTime);
       return String(charTime);
     }
     delay(500);
@@ -93,7 +93,7 @@ void ESP32_SMA_MQTT::wifiStartup(){
 #ifdef WIFI_SSID
   //overriding ssid and hostname
   logD("wifi begin with ssid(%s) and password (.......)", WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD); 
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   for  (int w=0; w<=10 || WiFi.status() != WL_CONNECTED; w++) {
     delay(500);
     logD(".wifi.");
@@ -107,7 +107,7 @@ void ESP32_SMA_MQTT::wifiStartup(){
 
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
   logD("mqtt topic: %s", config.mqttTopic);
-  if (config.mqttTopic == "") 
+  if (config.mqttTopic == "")
     config.mqttTopic = mqttInstance.sapString;
   int i = 0;
   while (WiFi.status() != WL_CONNECTED) {
@@ -118,8 +118,8 @@ void ESP32_SMA_MQTT::wifiStartup(){
     i++;
     delay(1000);
   }
-  // Success connecting 
-  ESP32_SMA_Inverter_App::smartConfig = 0; 
+  // Success connecting
+  ESP32_SMA_Inverter_App::smartConfig = 0;
   String hostName = mqttInstance.sapString;
   logW("hostname %s", hostName);
   logW("IP Address: %s", ((String)WiFi.localIP().toString()).c_str());
@@ -136,7 +136,7 @@ void ESP32_SMA_MQTT::wifiStartup(){
   ESP32_SMA_Inverter_App::webServer.on("/postform/", E_handleForm);
 
   logI("Web Server Running: ");
-  
+
 }
 
 // Configure wifi using ESP Smartconfig app on phone
@@ -144,7 +144,7 @@ void ESP32_SMA_MQTT::mySmartConfig() {
   logD("smartConfig");
   // Wipe current credentials
   // WiFi.disconnect(true); // deletes the wifi credentials
-  
+
   WiFi.mode(WIFI_STA);
   delay(2000);
   WiFi.begin();
@@ -167,7 +167,7 @@ void ESP32_SMA_MQTT::mySmartConfig() {
 
   //Wait for WiFi to connect to AP
   logW("Waiting for WiFi");
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     logD(".");
@@ -182,17 +182,17 @@ void ESP32_SMA_MQTT::mySmartConfig() {
 
 // Use ESP SmartConfig to connect to wifi
 void ESP32_SMA_MQTT::connectAP(){
-  ESP32_SMA_Inverter_App::webServer.send(200, "text/plain", "Open ESPTouch: Smartconfig App to connect to Wifi Network"); 
+  ESP32_SMA_Inverter_App::webServer.send(200, "text/plain", "Open ESPTouch: Smartconfig App to connect to Wifi Network");
   delay(2000);
   mySmartConfig();
-  
+
 }
 
 
 void ESP32_SMA_MQTT::wifiLoop(){
   // Attempt to reconnect to Wifi if disconnected
   if ( WiFi.status() != WL_CONNECTED) {
-    
+
     WiFi.disconnect();
     WiFi.reconnect();
   }
@@ -204,14 +204,14 @@ void ESP32_SMA_MQTT::wifiLoop(){
     WiFi.reconnect();
     mqttInstance.previousMillis = currentMillis;
   }
-  ESP32_SMA_Inverter_App::webServer.handleClient();  
+  ESP32_SMA_Inverter_App::webServer.handleClient();
 }
 
 void ESP32_SMA_MQTT::formPage () {
   char tempstr[2048];
   char *responseHTML;
   InverterData& invData = ESP32_SMA_Inverter::getInstance().invData;
-  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;  
+  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
   char fulltopic[100];
 
@@ -258,18 +258,18 @@ table, th, td {\
 
   if (config.hassDisc) {
     strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\" checked ></TD><TR>\n");
-    snprintf(fulltopic,sizeof(fulltopic),"homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(),invData.Serial);
+    snprintf(fulltopic,sizeof(fulltopic),"homeassistant/sensor/%s/%d/state",config.mqttTopic.c_str(),invData.Serial);
   } else {
     strcat(responseHTML, "<TR><TD>Home Assistant Auto Discovery:</TD><TD> <input type=\"checkbox\" name=\"hassDisc\"></TD><TR>\n");
-    snprintf(fulltopic,sizeof(fulltopic),"%s-%d/state",config.mqttTopic.c_str(),invData.Serial);
+    snprintf(fulltopic,sizeof(fulltopic),"%s/%d/state",config.mqttTopic.c_str(),invData.Serial);
   }
   strcat(responseHTML, "</TABLE>");
   strcat(responseHTML, "<input type=\"submit\" value=\"Submit\"></form><BR> <A href=\"/smartconfig\">Enable ESP Touch App smart config</A><BR>");
 
 
   strcat(responseHTML, "<TABLE><TR><TH>Last Scan</TH><TH>Data</TH>\n");
-  
-  
+
+
   snprintf(tempstr, sizeof(tempstr),
 "<tr><td>MQTT Topic</td><td>%s</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
@@ -308,13 +308,13 @@ table, th, td {\
 // Function to extract the configuration
 void ESP32_SMA_MQTT::handleForm() {
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
-  
+
   log_w("Connect handleForm\n");
   if (ESP32_SMA_Inverter_App::webServer.method() != HTTP_POST) {
     ESP32_SMA_Inverter_App::webServer.send(405, "text/plain", "Method Not Allowed");
   } else {
     log_w("POST form was:");
-    config.hassDisc = false; 
+    config.hassDisc = false;
     for (uint8_t i = 0; i < ESP32_SMA_Inverter_App::webServer.args(); i++) {
       String name = ESP32_SMA_Inverter_App::webServer.argName(i);
       String v = ESP32_SMA_Inverter_App::webServer.arg(i);
@@ -324,7 +324,7 @@ void ESP32_SMA_MQTT::handleForm() {
         config.mqttBroker = v.c_str();
       } else if (name == "mqttPort") {
         String val = v.c_str();
-        config.mqttPort = val.toInt();   
+        config.mqttPort = val.toInt();
       } else if (name == "mqttUser") {
         config.mqttUser = v.c_str();
       } else if (name == "mqttPasswd") {
@@ -390,7 +390,7 @@ void ESP32_SMA_MQTT::brokerConnect() {
 // Returns true if nighttime
 bool ESP32_SMA_MQTT::publishData(){
   InverterData& invData = ESP32_SMA_Inverter::getInstance().invData;
-  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;  
+  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
 
   if(config.mqttBroker.length() < 1 ){
@@ -425,7 +425,7 @@ bool ESP32_SMA_MQTT::publishData(){
     // strcat(theData,"}");
     char topic[100];
     if (config.hassDisc)
-      snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), invData.Serial);
+      snprintf(topic,sizeof(topic), "sma/solar/%s-%d/state",config.mqttTopic.c_str(), invData.Serial);
     else
       snprintf(topic,sizeof(topic), "%s-%d/state",config.mqttTopic.c_str(), invData.Serial);
     logI(topic);
@@ -440,7 +440,7 @@ bool ESP32_SMA_MQTT::publishData(){
     ESP32_SMA_Inverter_App::client.endPublish();
   }
   // If Power is zero, it's night time
-  if (dispData.Pac > 0) 
+  if (dispData.Pac > 0)
     return(false);
   else
     return(true);
@@ -448,7 +448,7 @@ bool ESP32_SMA_MQTT::publishData(){
 
 void ESP32_SMA_MQTT::logViaMQTT(const char *logStr){
   InverterData& invData = ESP32_SMA_Inverter::getInstance().invData;
-  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;  
+  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
 
   char tmp[1000];
@@ -457,12 +457,12 @@ void ESP32_SMA_MQTT::logViaMQTT(const char *logStr){
   }
   snprintf(tmp,sizeof(tmp),"{ \"Log\": \"%s\" }",logStr);
   brokerConnect();
-  
+
   if (ESP32_SMA_Inverter_App::client.connected()){
 
     // strcat(theData,"}");
     char topic[100];
-    snprintf(topic,sizeof(topic), "homeassistant/sensor/%s-%d/state",config.mqttTopic.c_str(), invData.Serial);
+    snprintf(topic,sizeof(topic), "sma/solar/%s-%d/state",config.mqttTopic.c_str(), invData.Serial);
     logI(topic);
     logI(" = ");
     logI(" %s\n",tmp);
@@ -474,7 +474,7 @@ void ESP32_SMA_MQTT::logViaMQTT(const char *logStr){
       logW("Failed Publish\n");
     ESP32_SMA_Inverter_App::client.endPublish();
   }
-  
+
 }
 
 
@@ -482,62 +482,68 @@ void ESP32_SMA_MQTT::logViaMQTT(const char *logStr){
 void ESP32_SMA_MQTT::hassAutoDiscover(int timeout){
 
   InverterData& invData = ESP32_SMA_Inverter::getInstance().invData;
-  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;  
+  DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
 
-  char tmpstr[1000];
-  char topic[30];
+  char msg[500];
+  char topic[50];
   brokerConnect();
-  
+
   snprintf(topic,sizeof(topic)-1, "%s-%d",config.mqttTopic.c_str(), invData.Serial);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s AC Power\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Pac }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Pac",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s A Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Iac[0] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"IacA",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s B Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Iac[1] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"IacB",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s C Phase Current\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Iac[2] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"IacC",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s A Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Uac[0] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"UacA",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s B Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Uac[1] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"UacB",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s C Phase Voltage\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Uac[2] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"UacC",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"frequency\", \"name\": \"%s AC Frequency\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"Hz\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Freq }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Freq",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Wdc[0] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Wdc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"power\", \"name\": \"%s DC Power (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kW\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Wdc[1] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Wdc2",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Udc[0] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Udc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"voltage\", \"name\": \"%s DC Voltage (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"V\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Udc[1] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Udc2",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 1)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Idc[0] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Idc1",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"current\", \"name\": \"%s DC Current (String 2)\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"A\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Idc[1] }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Idc2",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Today\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.EToday }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"EToday",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"energy\", \"name\": \"%s kWh Total\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"kWh\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.ETotal }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"ETotal",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"device_class\": \"temperature\", \"name\": \"%s Inverter Temperature\" , \"state_topic\": \"homeassistant/sensor/%s/state\", \"unit_of_measurement\": \"C\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.InvTemp }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"InvTemp",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Device Status\" , \"state_topic\": \"homeassistant/sensor/%s/state\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.DevStatus }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"DevStatus",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Grid Relay Status\" , \"state_topic\": \"homeassistant/sensor/%s/state\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.GridRelay }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"GridRelay",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Bluetooth\" , \"state_topic\": \"homeassistant/sensor/%s/state\",\"unit_of_measurement\": \"%%\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.BTStrength }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Bluetooth",tmpstr);
-  snprintf(tmpstr,sizeof(tmpstr)-1, "{\"name\": \"%s Log\" , \"state_topic\": \"homeassistant/sensor/%s/state\",  \"expire_after\": %d, \"value_template\": \"{{ value_json.Log }}\" }",topic,topic,timeout);
-  sendLongMQTT(topic,"Log",tmpstr);
+  const size_t msg_size = sizeof(msg);
+
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "AC Power", "kW", "Pac", "Pac");
+    sendHassAuto(msg, msg_size, timeout, topic, "current", "A Phase Current", "A", "Iac[0]", "Iac0");
+    sendHassAuto(msg, msg_size, timeout, topic, "current", "B Phase Current", "A", "Iac[1]", "Iac1");
+    sendHassAuto(msg, msg_size, timeout, topic, "current", "C Phase Current", "A", "Iac[2]", "Iac2");
+    sendHassAuto(msg, msg_size, timeout, topic, "voltage", "A Phase Voltage", "V", "Uac[0]", "Uac0");
+    sendHassAuto(msg, msg_size, timeout, topic, "voltage", "B Phase Voltage", "V", "Uac[1]", "Uac1");
+    sendHassAuto(msg, msg_size, timeout, topic, "voltage", "C Phase Voltage", "V", "Uac[2]", "Uac2");
+    sendHassAuto(msg, msg_size, timeout, topic, "frequency", "AC Frequency", "Hz", "Freq", "Freq");
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 1)", "kW", "Wdc[0]", "Wdc0");
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 2)", "kW", "Wdc[1]", "Wdc1");
+    sendHassAuto(msg, msg_size, timeout, topic, "voltage", "DC Voltage (String 1)", "V", "Udc[0]", "Udc0");
+    sendHassAuto(msg, msg_size, timeout, topic, "voltage", "DC Voltage (String 2)", "V", "Udc[1]", "Udc1");
+    sendHassAuto(msg, msg_size, timeout, topic, "current", "DC Current (String 1)", "A", "Idc[0]", "Idc0");
+    sendHassAuto(msg, msg_size, timeout, topic, "current", "DC Current (String 2)", "A", "Idc[1]", "Idc1");
+
+    sendHassAuto(msg, msg_size, timeout, topic, "energy", "kWh Today", "kWh", "EToday", "EToday");
+    sendHassAuto(msg, msg_size, timeout, topic, "energy", "kWh Total", "kWh", "ETotal", "ETotal");
+
+    sendHassAuto(msg, msg_size, timeout, topic, "temperature", "Inverter Temperature", "°C", "InvTemp", "InvTemp");
+    sendHassAutoNoClassNoUnit(msg, msg_size, timeout, topic, "Device Status", "DevStatus", "DevStatus");
+    sendHassAutoNoClassNoUnit(msg, msg_size, timeout, topic, "Grid Relay Status", "GridRelay", "GridRelay");
+    sendHassAutoNoClass(msg, msg_size, timeout, topic, "Bluetooth", "%", "BTStrength", "BTStrength");
+    sendHassAutoNoClassNoUnit(msg, msg_size, timeout, topic, "Log", "Log", "Log");
+
+}
+
+void ESP32_SMA_MQTT::sendHassAutoNoClassNoUnit(char *msg, size_t msg_size, int timeout, const char *topic, const char *devname, const char *sensortype, const char *sensortypeid) {
+    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA Solar\", \"manufacturer\": \"SMA\"  } }", devname, topic, timeout, sensortype, topic, sensortypeid, topic);
+    logD(msg);
+    sendLongMQTT(topic, sensortypeid, msg);
+}
+
+void
+ESP32_SMA_MQTT::sendHassAutoNoClass(char *msg, size_t msg_size, int timeout, const char *topic, const char *devname, const char *unitOf, const char *sensortype, const char *sensortypeid) {
+    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA Solar\", \"manufacturer\": \"SMA\"  } }", devname, topic, unitOf, timeout, sensortype, topic, sensortypeid, topic);
+    logD(msg);
+    sendLongMQTT(topic, sensortypeid, msg);
+}
+
+void ESP32_SMA_MQTT::sendHassAuto(char *msg, size_t msg_size, int timeout, const char *topic, const char *devclass,
+                                  const char *devname, const char *unitOf, const char *sensortype,
+                                  const char *sensortypeid) {
+    snprintf(msg, msg_size, "{\"device_class\": \"%s\", \"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\", \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA Solar\", \"manufacturer\": \"SMA\"  } } ", 
+      devclass, devname, topic, unitOf, timeout, sensortype, topic, sensortypeid, topic);
+    logD(msg);
+    sendLongMQTT(topic, sensortypeid, msg);
 }
 
 void ESP32_SMA_MQTT::sendLongMQTT(const char *topic, const char *postscript, const char *msg){
   int len = strlen(msg);
   char tmpstr[100];
-  snprintf(tmpstr,sizeof(tmpstr),"homeassistant/sensor/%s-%s/config",topic,postscript);
+  snprintf(tmpstr,sizeof(tmpstr),"homeassistant/sensor/%s/%s/config",topic,postscript);
   ESP32_SMA_Inverter_App::client.beginPublish(tmpstr,len,true);
   logI("%s -> %s... ",tmpstr,msg);
    if (ESP32_SMA_Inverter_App::client.print(msg))

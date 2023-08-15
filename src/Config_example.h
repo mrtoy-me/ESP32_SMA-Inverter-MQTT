@@ -26,6 +26,7 @@
 #define SMA_BTADDRESS "00:80:25:00:00:00"
 #define SCAN_RATE  60
 #define HASS_DISCOVERY false
+#define HASS_STATE_TOPIC "homeassistant/sensor/%s/state"
 #define TIMEZONE ""
 #define NTPHOSTNAME "pool.ntp.org"
 
