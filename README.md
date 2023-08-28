@@ -1,11 +1,11 @@
 # ESP32_SMA-Inverter-MQTT
 Arduino Project to read SMA Inverter data via ESP32 bluetooth and post to MQTT for consumption by Home Assistant.
 
-It ist tested with my SMA SMC6000TL with a plugin SMA bluetooth module.
+It is tested with my 2x SB3000TL-20 and 1x SB1600TL-10 with a plugin SMA bluetooth module.
 Please let me know when you have tested the software on other SMA Inverters.
 
-The starting point for this project was the code posted by "SBFspot" and "ESP32_to_SMA" on github.
-Forked from the great work of Lupo135, who had a different use case in mind.
+The starting point for this project was the code posted by "ESP32_SMA-Inverter-MQTT" by  and "SBFspot" and "ESP32_to_SMA" on github.
+Forked from the great work of Darryl Bond and of Lupo135.
 Many thanks for the work on these projects!
 
 
@@ -26,10 +26,18 @@ To first configure:
   - Device will reboot and should display successful connects to the inverter and mqtt server on the serial monitor
   - In Home Assistant add an entities card and search for entities starting with SMA-XXXXXXXXXXX
 
+
+Additions:
+  - Now displaying Temperature, Grid relay and inverter status
+  - home assistant device configuration, works with auto discovery feature via MQTT
+
 NOTES:
 
 TODO:
-Read month and year History
+  - Read month and year History
+  - refactor code a bit more for more clarity
+  - should be possible to merge/fork with the sbfspot project, or at least re-use more code from it without needing to port.
+  - should also be possible to directly integrate into Home Assistant through esphome without the going through mqtt. Also this allows OTA update and (re)configuration through yaml files. see my first attempt here: https://github.com/keerekeerweere/esphome_smabluetooth
 
 KNOWN BUGS:
-Not displaying Temperature or Grid relay
+  - first time setup somehow ignores the default settings of config_values.h, cleanup the first init

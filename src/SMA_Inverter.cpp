@@ -24,22 +24,44 @@ SOFTWARE.
 
 #include "SMA_Inverter.h"
 
-
 int32_t  value32 = 0;
 int64_t  value64 = 0;
 uint64_t totalWh = 0;
 uint64_t totalWh_prev = 0;
 time_t   dateTime = 0;
 
-InverterData InvData;
-InverterData *pInvData = &InvData;
-DisplayData DispData;
-DisplayData *pDispData = &DispData;
+const char btPin[] = {'0','0','0','0',0}; // BT pin Always 0000. (not login passcode!)
 
-bool isValidSender(uint8_t expAddr[6], uint8_t isAddr[6]) {
+InverterData ESP32_SMA_Inverter::invData = InverterData();
+DisplayData ESP32_SMA_Inverter::dispData = DisplayData();
+
+
+bool ESP32_SMA_Inverter::begin(String localName, bool isMaster) {
+  boolean bOk = false;
+    bOk = serialBT.begin("ESP32toSMA", true);   // "true" creates this device as a BT Master.
+    bOk &= serialBT.setPin(&btPin[0]); 
+    return bOk;
+}
+
+
+bool ESP32_SMA_Inverter::connect(uint8_t remoteAddress[]) {
+  bool bGotConnected = serialBT.connect(remoteAddress);
+  btConnected = bGotConnected;
+  return bGotConnected; 
+}
+
+bool ESP32_SMA_Inverter::disconnect() {
+  bool bGotDisconnected = serialBT.disconnect();
+  btConnected = false;
+  return bGotDisconnected;
+}
+
+//serialBT.disconnect();
+
+bool ESP32_SMA_Inverter::isValidSender(uint8_t expAddr[6], uint8_t isAddr[6]) {
   for (int i = 0; i < 6; i++)
     if ((isAddr[i] != expAddr[i]) && (expAddr[i] != 0xFF)) {
-      DEBUG2_PRINTF("\nShoud-Addr: %02X %02X %02X %02X %02X %02X\n   Is-Addr: %02X %02X %02X %02X %02X %02X\n",
+      logV("\nShoud-Addr: %02X %02X %02X %02X %02X %02X\n   Is-Addr: %02X %02X %02X %02X %02X %02X\n",
         expAddr[5], expAddr[4], expAddr[3], expAddr[2], expAddr[1], expAddr[5],
          isAddr[5],  isAddr[4],  isAddr[3],  isAddr[2],  isAddr[1],  isAddr[5]);
         return false;
@@ -49,42 +71,42 @@ bool isValidSender(uint8_t expAddr[6], uint8_t isAddr[6]) {
 
 // ----------------------------------------------------------------------------------------------
 //unsigned int readBtPacket(int index, unsigned int cmdcodetowait) {
-E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
-  extern BluetoothSerial SerialBT;
-  DEBUG3_PRINTF("getPacket cmd=0x%04x\n", wait4Command);
-  extern bool ReadTimeout;
+E_RC ESP32_SMA_Inverter::getPacket(uint8_t expAddr[6], int wait4Command) {
+  //extern BluetoothSerial serialBT;
+  logV("getPacket cmd=0x%04x\n", wait4Command);
+  //extern bool readTimeout;
   int index = 0;
   bool hasL2pckt = false;
   E_RC rc = E_OK; 
-  L1Hdr *pL1Hdr = (L1Hdr *)&BTrdBuf[0];
+  L1Hdr *pL1Hdr = (L1Hdr *)&btrdBuf[0];
   do {
     // read L1Hdr
     uint8_t rdCnt=0;
     for (rdCnt=0;rdCnt<18;rdCnt++) {
-      BTrdBuf[rdCnt]= BTgetByte();
-      if (ReadTimeout)  break;
+      btrdBuf[rdCnt]= BTgetByte();
+      if (readTimeout)  break;
     }
-    DEBUG2_PRINTF("\nL1 Rec=%d bytes pkL=0x%04x=%d Cmd=0x%04x\n",
+    logD("\nL1 Rec=%d bytes pkL=0x%04x=%d Cmd=0x%04x\n",
         rdCnt, pL1Hdr->pkLength, pL1Hdr->pkLength, pL1Hdr->command);
 
     if (rdCnt<17) {
-      DEBUG3_PRINTF("L1<18=%d bytes", rdCnt);
+      logV("L1<18=%d bytes", rdCnt);
       #if (DEBUG_SMA > 2)
       HexDump(BTrdBuf, rdCnt, 10, 'R');
       #endif
       return E_NODATA;
     }
     // Validate L1 header
-    if (!((BTrdBuf[0] ^ BTrdBuf[1] ^ BTrdBuf[2]) == BTrdBuf[3])) {
-      DEBUG1_PRINT("\nWrong L1 CRC!!" );
+    if (!((btrdBuf[0] ^ btrdBuf[1] ^ btrdBuf[2]) == btrdBuf[3])) {
+      logW("\nWrong L1 CRC!!" );
     }
 
     if (pL1Hdr->pkLength > sizeof(L1Hdr)) { // more bytes to read
       for (rdCnt=18; rdCnt<pL1Hdr->pkLength; rdCnt++) {
-        BTrdBuf[rdCnt]= BTgetByte();
-        if (ReadTimeout) break;
+        btrdBuf[rdCnt]= BTgetByte();
+        if (readTimeout) break;
       }
-      DEBUG3_PRINTF("L2 Rec=%d bytes", rdCnt-18);
+      logV("L2 Rec=%d bytes", rdCnt-18);
       #if (DEBUG_SMA > 2)
       HexDump(BTrdBuf, rdCnt, 10, 'R');
       #endif
@@ -93,8 +115,8 @@ E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
       if (isValidSender(expAddr, pL1Hdr->SourceAddr)) {
         rc = E_OK;
 
-        DEBUG2_PRINTF("HasL2pckt: 0x7E?=0x%02X 0x656003FF?=0x%08X\n", BTrdBuf[18], get_u32(BTrdBuf+19));
-        if ((hasL2pckt == 0) && (BTrdBuf[18] == 0x7E) && (get_u32(BTrdBuf+19) == 0x656003FF)) {
+        logD("HasL2pckt: 0x7E?=0x%02X 0x656003FF?=0x%08X\n", btrdBuf[18], get_u32(btrdBuf+19));
+        if ((hasL2pckt == 0) && (btrdBuf[18] == 0x7E) && (get_u32(btrdBuf+19) == 0x656003FF)) {
           hasL2pckt = true;
         }
 
@@ -103,7 +125,7 @@ E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
           bool escNext = false;
 
           for (int i=sizeof(L1Hdr); i<pL1Hdr->pkLength; i++) {
-            pcktBuf[index] = BTrdBuf[i];
+            pcktBuf[index] = btrdBuf[i];
             //Keep 1st byte raw unescaped 0x7E
             if (escNext == true) {
               pcktBuf[index] ^= 0x20;
@@ -115,13 +137,13 @@ E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
               else
                 index++;
             }
-            if (index >= maxpcktBufsize) {
-              DEBUG1_PRINTF("pcktBuf overflow! (%d)\n", index);
+            if (index >= MAX_PCKT_BUF_SIZE) {
+              logE("pcktBuf overflow! (%d)\n", index);
             }
           }
           pcktBufPos = index;
         } else {  // no L2pckt
-          memcpy(pcktBuf, BTrdBuf, rdCnt);
+          memcpy(pcktBuf, btrdBuf, rdCnt);
           pcktBufPos = rdCnt;
         }
       } else { // isValidSender()
@@ -135,29 +157,29 @@ E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
       if (isValidSender(expAddr, pL1Hdr->SourceAddr)) {
           rc = E_OK;
 
-          memcpy(pcktBuf, BTrdBuf, rdCnt);
+          memcpy(pcktBuf, btrdBuf, rdCnt);
           pcktBufPos = rdCnt;
       } else { // isValidSender()
           rc = E_RETRY;
       }
     }
-    if (BTrdBuf[0] != '\x7e') { 
-       SerialBT.flush();
-       DEBUG2_PRINT("\nCommBuf[0]!=0x7e -> BT-flush");
+    if (btrdBuf[0] != '\x7e') { 
+       serialBT.flush();
+       logD("\nCommBuf[0]!=0x7e -> BT-flush");
     }
   } while (((pL1Hdr->command != wait4Command) || (rc == E_RETRY)) && (0xFF != wait4Command));
 
   if ((rc == E_OK) ) {
   #if (DEBUG_SMA > 1)
-    DEBUG2_PRINT("<<<====Rd Content of pcktBuf =======>>>");
+    logD("<<<====Rd Content of pcktBuf =======>>>");
     HexDump(pcktBuf, pcktBufPos, 10, 'P');
-    DEBUG2_PRINT("==>>>");
+    logD("==>>>");
   #endif
   }
 
   if (pcktBufPos > pcktBufMax) {
     pcktBufMax = pcktBufPos;
-    DEBUG2_PRINTF("pcktBufMax is now %d bytes\n", pcktBufMax);
+    logD("pcktBufMax is now %d bytes\n", pcktBufMax);
   }
 
   return rc;
@@ -165,38 +187,75 @@ E_RC getPacket(uint8_t expAddr[6], int wait4Command) {
 
 // *************************************************
 
-void writePacketHeader(uint8_t *buf, const uint16_t control, const uint8_t *destaddress) {
-  extern uint16_t FCSChecksum;
+void ESP32_SMA_Inverter::writePacketHeader(uint8_t *buf, const uint16_t control, const uint8_t *destaddress) {
+  //extern uint16_t fcsChecksum;
 
 
     pcktBufPos = 0;
 
-    FCSChecksum = 0xFFFF;
+    fcsChecksum = 0xFFFF;
     buf[pcktBufPos++] = 0x7E;
     buf[pcktBufPos++] = 0;  //placeholder for len1
     buf[pcktBufPos++] = 0;  //placeholder for len2
     buf[pcktBufPos++] = 0;  //placeholder for checksum
     int i;
-    for(i = 0; i < 6; i++) buf[pcktBufPos++] = EspBTAddress[i];
+    for(i = 0; i < 6; i++) buf[pcktBufPos++] = espBTAddress[i];
     for(i = 0; i < 6; i++) buf[pcktBufPos++] = destaddress[i];
 
     buf[pcktBufPos++] = (uint8_t)(control & 0xFF);
     buf[pcktBufPos++] = (uint8_t)(control >> 8);
 }
+
+
+bool ESP32_SMA_Inverter::isCrcValid(uint8_t lb, uint8_t hb)
+{
+  bool bRet = false;
+  
+    if (((lb == 0x7E) || (hb == 0x7E) || (lb == 0x7D) || (hb == 0x7D)))
+      bRet = false;
+    else
+      bRet = true;
+
+  logD("isCrcValid at pcktBufPos: %d", bRet);
+  return bRet;
+}
+
+
+uint32_t ESP32_SMA_Inverter::getattribute(uint8_t *pcktbuf)
+{
+    const int recordsize = 40;
+    uint32_t tag=0, attribute=0, prevTag=0;
+    for (int idx = 8; idx < recordsize; idx += 4)
+    {      
+        attribute = ((uint32_t)get_u32(pcktbuf + idx));
+        tag = attribute & 0x00FFFFFF;
+        if (tag == 0xFFFFFE) // count on prevTag to contain a value to succeed
+            break;
+        if ((attribute >> 24) == 1) //only take into account meaningfull values here 
+            if (prevTag==0) prevTag = tag; //interested in pop of vector, so only (possible) first value is interesting here if anything was added at back
+    }
+
+    return prevTag;
+}
+
+
 // ***********************************************
-E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
-  extern uint8_t sixff[6];
+E_RC ESP32_SMA_Inverter::getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
+  //extern uint8_t sixff[6];
+  do {
     pcktID++;
     writePacketHeader(pcktBuf, 0x01, sixff); //addr_unknown);
-    //if (pInvData->SUSyID == SID_SB240)
-    //writePacket(pcktBuf, 0x09, 0xE0, 0, pInvData->SUSyID, pInvData->Serial);
+    //if (invData.SUSyID == SID_SB240)
+    //writePacket(pcktBuf, 0x09, 0xE0, 0, invData.SUSyID, invData.Serial);
     //else
-    writePacket(pcktBuf, 0x09, 0xA0, 0, pInvData->SUSyID, pInvData->Serial);
+    writePacket(pcktBuf, 0x09, 0xA0, 0, invData.SUSyID, invData.Serial);
     write32(pcktBuf, command);
     write32(pcktBuf, first);
     write32(pcktBuf, last);
     writePacketTrailer(pcktBuf);
     writePacketLength(pcktBuf);
+
+  } while (!isCrcValid(pcktBuf[pcktBufPos - 3], pcktBuf[pcktBufPos - 2]));
 
     BTsendPacket(pcktBuf);
     int string[3] = { 0,0,0 }; //String number count
@@ -205,25 +264,25 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
     bool  validPcktID = false;
     do {
     do {
-      pInvData->status = getPacket(pInvData->BTAddress, 0x0001);
+      invData.status = getPacket(invData.BTAddress, 0x0001);
    
-      if (pInvData->status != E_OK) return pInvData->status;
+      if (invData.status != E_OK) return invData.status;
       if (validateChecksum()) {
-        if ((pInvData->status = (E_RC)get_u16(pcktBuf + 23)) != E_OK) {
-          DEBUG2_PRINTF("Packet status: 0x%02X\n", pInvData->status);
-          return pInvData->status;
+        if ((invData.status = (E_RC)get_u16(pcktBuf + 23)) != E_OK) {
+          logD("Packet status: 0x%02X\n", invData.status);
+          return invData.status;
         }
         // *** analyze received data ***
         pcktcount = get_u16(pcktBuf + 25);
         uint16_t rcvpcktID = get_u16(pcktBuf + 27) & 0x7FFF;
         if (pcktID == rcvpcktID) {
-          if ((get_u16(pcktBuf + 15) == pInvData->SUSyID) 
-            && (get_u32(pcktBuf + 17) == pInvData->Serial)) {
+          if ((get_u16(pcktBuf + 15) == invData.SUSyID) 
+            && (get_u32(pcktBuf + 17) == invData.Serial)) {
             validPcktID = true;
             value32 = 0;
             value64 = 0;
             uint16_t recordsize = 4 * ((uint32_t)pcktBuf[5] - 9) / (get_u32(pcktBuf + 37) - get_u32(pcktBuf + 33) + 1);
-            DEBUG2_PRINTF("\npcktID=0x%04x recsize=%d BufPos=%d pcktCnt=%04x", 
+            logD("\npcktID=0x%04x recsize=%d BufPos=%d pcktCnt=%04x", 
                             rcvpcktID,   recordsize, pcktBufPos, pcktcount);
             for (uint16_t ii = 41; ii < pcktBufPos - 3; ii += recordsize) {
               uint8_t *recptr = pcktBuf + ii;
@@ -233,195 +292,197 @@ E_RC getInverterDataCfl(uint32_t command, uint32_t first, uint32_t last) {
               uint32_t cls = code & 0xFF;
               uint8_t dataType = code >> 24;
               time_t datetime = (time_t)get_u32(recptr + 4);
-              DEBUG3_PRINTF("\nlri=0x%04x cls=0x%08X dataType=0x%02x",lri, cls, dataType);
+              logV("\nlri=0x%04x cls=0x%08X dataType=0x%02x",lri, cls, dataType);
        
               if (recordsize == 16) {
                 value64 = get_u64(recptr + 8);
-                DEBUG3_PRINTF("\nvalue64=%d=0x%08x",value64, value64);
+                logV("\nvalue64=%d=0x%08x",value64, value64);
        
                   //if (is_NaN(value64) || is_NaN((uint64_t)value64)) value64 = 0;
               } else if ((dataType != 16) && (dataType != 8)) { // ((dataType != DT_STRING) && (dataType != DT_STATUS)) {
                 value32 = get_u32(recptr + 16);
                 if ( value32 < 0) value32 = 0;
-                DEBUG3_PRINTF("\nvalue32=%d=0x%08x",value32, value32);
+                logV("\nvalue32=%d=0x%08x",value32, value32);
               }
               switch (lri) {
               case GridMsTotW: //SPOT_PACTOT
                   //This function gives us the time when the inverter was switched off
-                  pInvData->LastTime = datetime;
-                  pInvData->Pac = value32;
-                  pDispData->Pac = tokW(value32);
+                  invData.LastTime = datetime;
+                  invData.Pac = value32;
+                  dispData.Pac = tokW(value32);
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
-                  DEBUG1_PRINTF("Pac %15.3f kW %x \n GMT:%s \n", tokW(value32),value32, timeBuf);
+                  logI("Pac %15.3f kW %x \n GMT:%s \n", tokW(value32),value32, timeBuf);
                   break;
        
               case GridMsWphsA: //SPOT_PAC1
-                  pInvData->Pmax = value32;
-                  pDispData->Pmax = tokW(value32);
+                  invData.Pmax = value32;
+                  dispData.Pmax = tokW(value32);
                   //debug_watt("SPOT_PAC1", value32, datetime);
-                  DEBUG1_PRINTF("Pmax %14.2f kW \n", tokW(value32));
+                  logI("Pmax %14.2f kW \n", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case GridMsPhVphsA: //SPOT_UAC1
-                  pInvData->Uac[0] = value32;
-                  pDispData->Uac[0] = toVolt(value32);
+                  invData.Uac[0] = value32;
+                  dispData.Uac[0] = toVolt(value32);
                   //debug_volt("SPOT_UAC1", value32, datetime);
-                  DEBUG1_PRINTF("UacA %15.2f V  \n", toVolt(value32));
+                  logI("UacA %15.2f V  \n", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
               case GridMsPhVphsB: //SPOT_UAC2
-                  pInvData->Uac[1] = value32;
-                  pDispData->Uac[1] = toVolt(value32);
+                  invData.Uac[1] = value32;
+                  dispData.Uac[1] = toVolt(value32);
                   //debug_volt("SPOT_UAC1", value32, datetime);
-                  DEBUG1_PRINTF("UacB %15.2f V  \n", toVolt(value32));
+                  logI("UacB %15.2f V  \n", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;     
                 case GridMsPhVphsC: //SPOT_UAC2
-                  pInvData->Uac[2] = value32;
-                  pDispData->Uac[2] = toVolt(value32);
+                  invData.Uac[2] = value32;
+                  dispData.Uac[2] = toVolt(value32);
                   //debug_volt("SPOT_UAC1", value32, datetime);
-                  DEBUG1_PRINTF("UacC %15.2f V  \n", toVolt(value32));
+                  logI("UacC %15.2f V  \n", toVolt(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;       
               case GridMsAphsA_1: //SPOT_IAC1
               case GridMsAphsA:
-                  pInvData->Iac[0] = value32;
-                  pDispData->Iac[0] = toAmp(value32);
+                  invData.Iac[0] = value32;
+                  dispData.Iac[0] = toAmp(value32);
                   //debug_amp("SPOT_IAC1", value32, datetime);
-                  DEBUG1_PRINTF("IacA %15.2f A  \n", toAmp(value32));
+                  logI("IacA %15.2f A  \n", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
               case GridMsAphsB_1: //SPOT_IAC1
               case GridMsAphsB:
-                  pInvData->Iac[1] = value32;
-                  pDispData->Iac[1] = toAmp(value32);
+                  invData.Iac[1] = value32;
+                  dispData.Iac[1] = toAmp(value32);
                   //debug_amp("SPOT_IAC1", value32, datetime);
-                  DEBUG1_PRINTF("IacB %15.2f A  \n", toAmp(value32));
+                  logI("IacB %15.2f A  \n", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
               case GridMsAphsC_1: //SPOT_IAC1
               case GridMsAphsC:
-                  pInvData->Iac[2] = value32;
-                  pDispData->Iac[2] = toAmp(value32);
+                  invData.Iac[2] = value32;
+                  dispData.Iac[2] = toAmp(value32);
                   //debug_amp("SPOT_IAC1", value32, datetime);
-                  DEBUG1_PRINTF("IacB %15.2f A  \n", toAmp(value32));
+                  logI("IacB %15.2f A  \n", toAmp(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case GridMsHz: //SPOT_FREQ
-                  pInvData->Freq = value32;
-                  pDispData->Freq = toHz(value32);
-                  DEBUG1_PRINTF("Freq %14.2f Hz \n", toHz(value32));
+                  invData.Freq = value32;
+                  dispData.Freq = toHz(value32);
+                  logI("Freq %14.2f Hz \n", toHz(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsWatt: //SPOT_PDC1 / SPOT_PDC2
-                  pInvData->Wdc[string[0]] = value32;
-                  pDispData->Wdc[string[0]++] = tokW(value32);
-                  DEBUG1_PRINTF("PDC %15.2f kW \n", tokW(value32));
+                  invData.Wdc[string[0]] = value32;
+                  dispData.Wdc[string[0]++] = tokW(value32);
+                  logI("PDC %15.2f kW \n", tokW(value32));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsVol: //SPOT_UDC1 / SPOT_UDC2
-                  DEBUG1_PRINTF("Udc %15.2f V (%d) \n", toVolt(value32),string[1]);
-                  pInvData->Udc[string[1]] = value32;
-                  pDispData->Udc[string[1]++] = toVolt(value32);
+                  logI("Udc %15.2f V (%d) \n", toVolt(value32),string[1]);
+                  invData.Udc[string[1]] = value32;
+                  dispData.Udc[string[1]++] = toVolt(value32);
                   
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case DcMsAmp: //SPOT_IDC1 / SPOT_IDC2
-                  DEBUG1_PRINTF("Idc %15.2f A (%d)\n", toAmp(value32),string[2]);
-                  pInvData->Idc[string[2]] = value32;
-                  pDispData->Idc[string[2]++] = toAmp(value32);
+                  logI("Idc %15.2f A (%d)\n", toAmp(value32),string[2]);
+                  invData.Idc[string[2]] = value32;
+                  dispData.Idc[string[2]++] = toAmp(value32);
 
                   //printUnixTime(timeBuf, datetime);
-                  /* if ((pInvData->Udc[0]!=0) && (pInvData->Idc[0] != 0))
-                    pInvData->Eta = ((uint64_t)pInvData->Uac * (uint64_t)pInvData->Iac * 10000) /
-                                    ((uint64_t)pInvData->Udc[0] * (uint64_t)pInvData->Idc[0] );
-                  else pInvData->Eta = 0;
-                  DEBUG1_PRINTF("Efficiency %8.2f %%\n", toPercent(pInvData->Eta)); */
+                  /* if ((invData.Udc[0]!=0) && (invData.Idc[0] != 0))
+                    invData.Eta = ((uint64_t)invData.Uac * (uint64_t)invData.Iac * 10000) /
+                                    ((uint64_t)invData.Udc[0] * (uint64_t)invData.Idc[0] );
+                  else invData.Eta = 0;
+                  logI("Efficiency %8.2f %%\n", toPercent(invData.Eta)); */
                   break;
        
               case MeteringDyWhOut: //SPOT_ETODAY
                   //This function gives us the current inverter time
-                  //pInvData->InverterDatetime = datetime;
-                  pInvData->EToday = value64;
-                  pDispData->EToday = tokWh(value64);
+                  //invData.InverterDatetime = datetime;
+                  invData.EToday = value64;
+                  dispData.EToday = tokWh(value64);
                   //debug_kwh("SPOT_ETODAY", value64, datetime);
-                  DEBUG1_PRINTF("E-Today %11.3f kWh\n", tokWh(value64));
+                  logI("E-Today %11.3f kWh\n", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case MeteringTotWhOut: //SPOT_ETOTAL
                   //In case SPOT_ETODAY missing, this function gives us inverter time (eg: SUNNY TRIPOWER 6.0)
-                  //pInvData->InverterDatetime = datetime;
-                  pInvData->ETotal = value64;
-                  pDispData->ETotal = tokWh(value64);
+                  //invData.InverterDatetime = datetime;
+                  invData.ETotal = value64;
+                  dispData.ETotal = tokWh(value64);
                   //debug_kwh("SPOT_ETOTAL", value64, datetime);
-                  DEBUG1_PRINTF("E-Total %11.3f kWh\n", tokWh(value64));
+                  logI("E-Total %11.3f kWh\n", tokWh(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case MeteringTotOpTms: //SPOT_OPERTM
-                  pInvData->OperationTime = value64;
+                  invData.OperationTime = value64;
                   //debug_hour("SPOT_OPERTM", value64, datetime);
-                  DEBUG1_PRINTF("OperTime  %7.3f h \n", toHour(value64));
+                  logI("OperTime  %7.3f h \n", toHour(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case MeteringTotFeedTms: //SPOT_FEEDTM
-                  pInvData->FeedInTime = value64;
+                  invData.FeedInTime = value64;
                   //debug_hour("SPOT_FEEDTM", value64, datetime);
-                  DEBUG1_PRINTF("FeedTime  %7.3f h  \n", toHour(value64));
+                  logI("FeedTime  %7.3f h  \n", toHour(value64));
                   //printUnixTime(timeBuf, datetime);
                   break;
        
               case CoolsysTmpNom:
-                  pInvData->InvTemp = value32;
-                  pDispData->InvTemp = toTemp(value32);
-                  DEBUG1_PRINTF("Temp.     %7.3f C \n", toTemp(value32));
+                  invData.InvTemp = value32;
+                  dispData.InvTemp = toTemp(value32);
+                  logI("Temp.     %7.3f C \n", toTemp(value32));
                   break;
               case OperationHealth:
-                  pInvData->DevStatus = value32;
-                  DEBUG1_PRINTF("Device Status:    %d  \n", value32);
+                  value32 = getattribute(recptr);
+                  invData.DevStatus = value32;
+                  logI("Device Status:    %d  \n", value32);
                   break;
               case OperationGriSwStt:
-                  pInvData->GridRelay = value32;
-                  DEBUG1_PRINTF("Grid Relay:    %d  \n", value32);
+                  value32 = getattribute(recptr);
+                  invData.GridRelay = value32;
+                  logI("Grid Relay:    %d  \n", value32);
                   break;
               case MeteringGridMsTotWOut:
-                  //pInvData->MeteringGridMsTotWOut = value32;
+                  //invData.MeteringGridMsTotWOut = value32;
                   break;
               case MeteringGridMsTotWIn:
-                  //pInvData->MeteringGridMsTotWIn = value32;
+                  //invData.MeteringGridMsTotWIn = value32;
                   break;
               default:
 
-                DEBUG1_PRINTF("Caught: %x %d\n",lri,value32);
+                logI("Caught: %x %d\n",lri,value32);
               }
             } //for
           } else {
-            DEBUG3_PRINTF("*** Wrong SUSyID=%04x=%04x Serial=%08x=%08x", 
-                 get_u16(pcktBuf + 15), pInvData->SUSyID, get_u32(pcktBuf + 17),pInvData->Serial);
+            logW("*** Wrong SUSyID=%04x=%04x Serial=%08x=%08x", 
+                 get_u16(pcktBuf + 15), invData.SUSyID, get_u32(pcktBuf + 17),invData.Serial);
           }
         } else {  // wrong PacketID
-          DEBUG3_PRINTF("PacketID mismatch: exp=0x%04X is=0x%04X\n", pcktID, rcvpcktID);
+          logW("PacketID mismatch: exp=0x%04X is=0x%04X\n", pcktID, rcvpcktID);
           validPcktID = false;
           pcktcount = 0;
         }
       } else { // invalid Checksum
-        pInvData->status = E_CHKSUM;
-        return pInvData->status;
+        invData.status = E_CHKSUM;
+        return invData.status;
       }
    } while (pcktcount > 0);
    } while (!validPcktID);
-   return pInvData->status;
+   return invData.status;
 }
 // ***********************************************
-E_RC getInverterData(enum getInverterDataType type) {
+E_RC ESP32_SMA_Inverter::getInverterData(enum getInverterDataType type) {
   E_RC rc = E_OK;
   uint32_t command;
   uint32_t first;
@@ -429,7 +490,7 @@ E_RC getInverterData(enum getInverterDataType type) {
 
   switch (type) {
   case EnergyProduction:
-      DEBUG2_PRINT("\n*** EnergyProduction ***");
+      logD("\n*** EnergyProduction ***");
       // SPOT_ETODAY, SPOT_ETOTAL
       command = 0x54000200;
       first = 0x00260100;
@@ -437,7 +498,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotDCPower:
-      DEBUG2_PRINT("\n*** SpotDCPower ***");
+      logD("\n*** SpotDCPower ***");
       // SPOT_PDC1, SPOT_PDC2
       command = 0x53800200;
       first = 0x00251E00;
@@ -445,7 +506,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotDCVoltage:
-      DEBUG2_PRINT("\n*** SpotDCVoltage ***");
+      logD("\n*** SpotDCVoltage ***");
       // SPOT_UDC1, SPOT_UDC2, SPOT_IDC1, SPOT_IDC2
       command = 0x53800200;
       first = 0x00451F00;
@@ -453,7 +514,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotACPower:
-      DEBUG2_PRINT("\n*** SpotACPower ***");
+      logD("\n*** SpotACPower ***");
       // SPOT_PAC1, SPOT_PAC2, SPOT_PAC3
       command = 0x51000200;
       first = 0x00464000;
@@ -461,7 +522,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotACVoltage:
-      DEBUG2_PRINT("\n*** SpotACVoltage ***");
+      logD("\n*** SpotACVoltage ***");
       // SPOT_UAC1, SPOT_UAC2, SPOT_UAC3, SPOT_IAC1, SPOT_IAC2, SPOT_IAC3
       command = 0x51000200;
       first = 0x00464800;
@@ -469,7 +530,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotGridFrequency:
-      DEBUG2_PRINT("\n*** SpotGridFrequency ***");
+      logD("\n*** SpotGridFrequency ***");
       // SPOT_FREQ
       command = 0x51000200;
       first = 0x00465700;
@@ -477,7 +538,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SpotACTotalPower:
-      DEBUG2_PRINT("\n*** SpotACTotalPower ***");
+      logD("\n*** SpotACTotalPower ***");
       // SPOT_PACTOT
       command = 0x51000200;
       first = 0x00263F00;
@@ -485,7 +546,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case TypeLabel:
-      DEBUG2_PRINT("\n*** TypeLabel ***");
+      logD("\n*** TypeLabel ***");
       // INV_NAME, INV_TYPE, INV_CLASS
       command = 0x58000200;
       first = 0x00821E00;
@@ -493,7 +554,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case SoftwareVersion:
-      DEBUG2_PRINT("\n*** SoftwareVersion ***");
+      logD("\n*** SoftwareVersion ***");
       // INV_SWVERSION
       command = 0x58000200;
       first = 0x00823400;
@@ -501,7 +562,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case DeviceStatus:
-      DEBUG2_PRINT("\n*** DeviceStatus ***");
+      logD("\n*** DeviceStatus ***");
       // INV_STATUS
       command = 0x51800200;
       first = 0x00214800;
@@ -509,7 +570,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case GridRelayStatus:
-      DEBUG2_PRINT("\n*** GridRelayStatus ***");
+      logD("\n*** GridRelayStatus ***");
       // INV_GRIDRELAY
       command = 0x51800200;
       first = 0x00416400;
@@ -517,7 +578,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case OperationTime:
-      DEBUG2_PRINT("\n*** OperationTime ***");
+      logD("\n*** OperationTime ***");
       // SPOT_OPERTM, SPOT_FEEDTM
       command = 0x54000200;
       first = 0x00462E00;
@@ -525,21 +586,21 @@ E_RC getInverterData(enum getInverterDataType type) {
       break;
 
   case InverterTemp:
-      DEBUG2_PRINT("\n*** InverterTemp ***");
+      logD("\n*** InverterTemp ***");
       command = 0x52000200;
       first = 0x00237700;
       last = 0x002377FF;
       break;
 
   case MeteringGridMsTotW:
-      DEBUG2_PRINT("\n*** MeteringGridMsTotW ***");
+      logD("\n*** MeteringGridMsTotW ***");
       command = 0x51000200;
       first = 0x00463600;
       last = 0x004637FF;
       break;
 
   default:
-      DEBUG1_PRINT("\nInvalid getInverterDataType!!");
+      logW("\nInvalid getInverterDataType!!");
       return E_BADARG;
   };
 
@@ -550,7 +611,7 @@ E_RC getInverterData(enum getInverterDataType type) {
       if (retries>1) {
          return rc;
       }
-      DEBUG2_PRINTF("\nRetrying.%d",retries);
+      logI("\nRetrying.%d",retries);
     } else {
       break;
     } 
@@ -560,42 +621,42 @@ E_RC getInverterData(enum getInverterDataType type) {
 }
 
 //-------------------------------------------------------------------------
-bool getBT_SignalStrength() {
-  DEBUG2_PRINT("*** SignalStrength ***\n");
-  writePacketHeader(pcktBuf, 0x03, pInvData->BTAddress);
+bool ESP32_SMA_Inverter::getBT_SignalStrength() {
+  logI("\n\n*** SignalStrength ***");
+  writePacketHeader(pcktBuf, 0x03, invData.BTAddress);
   writeByte(pcktBuf,0x05);
   writeByte(pcktBuf,0x00);
   writePacketLength(pcktBuf);
   BTsendPacket(pcktBuf);
 
-  getPacket(pInvData->BTAddress, 4);
-  pDispData->BTSigStrength = ((float)BTrdBuf[22] * 100.0f / 255.0f);
-  DEBUG1_PRINTF("BT-Signal %9.1f %%\n", pDispData->BTSigStrength );
+  getPacket(invData.BTAddress, 4);
+  dispData.BTSigStrength = ((float)btrdBuf[22] * 100.0f / 255.0f);
+  logI("BT-Signal %9.1f %%", dispData.BTSigStrength );
   return true;
 }
 
 //-------------------------------------------------------------------------
-E_RC initialiseSMAConnection() {
-  extern uint8_t sixff[6];
-  DEBUG2_PRINTLN(" -> Initialize");
-  getPacket(pInvData->BTAddress, 2); // 1. Receive
-  pInvData->NetID = pcktBuf[22];
-  DEBUG2_PRINTF("SMA netID=%02X\n", pInvData->NetID);
-  writePacketHeader(pcktBuf, 0x02, pInvData->BTAddress);
+E_RC ESP32_SMA_Inverter::initialiseSMAConnection() {
+  //extern uint8_t sixff[6];
+  logI(" -> Initialize");
+  getPacket(invData.BTAddress, 2); // 1. Receive
+  invData.NetID = pcktBuf[22];
+  logI("SMA netID=%02X\n", invData.NetID);
+  writePacketHeader(pcktBuf, 0x02, invData.BTAddress);
   write32(pcktBuf, 0x00700400);
-  writeByte(pcktBuf, pInvData->NetID);
+  writeByte(pcktBuf, invData.NetID);
   write32(pcktBuf, 0);
   write32(pcktBuf, 1);
   writePacketLength(pcktBuf);
 
   BTsendPacket(pcktBuf);             // 1. Reply
-  getPacket(pInvData->BTAddress, 5); // 2. Receive
+  getPacket(invData.BTAddress, 5); // 2. Receive
 
   // Extract ESP32 BT address
-  memcpy(EspBTAddress, pcktBuf+26,6); 
-  DEBUG3_PRINTF("ESP32 BT address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-             EspBTAddress[5], EspBTAddress[4], EspBTAddress[3],
-             EspBTAddress[2], EspBTAddress[1], EspBTAddress[0]);
+  memcpy(espBTAddress, pcktBuf+26,6); 
+  logW("ESP32 BT address: %02X:%02X:%02X:%02X:%02X:%02X\n",
+             espBTAddress[5], espBTAddress[4], espBTAddress[3],
+             espBTAddress[2], espBTAddress[1], espBTAddress[0]);
 
   pcktID++;
   writePacketHeader(pcktBuf, 0x01, sixff); //addr_unknown);
@@ -607,21 +668,21 @@ E_RC initialiseSMAConnection() {
   writePacketLength(pcktBuf);
 
   BTsendPacket(pcktBuf);             // 2. Reply
-  if (getPacket(pInvData->BTAddress, 1) != E_OK) // 3. Receive
+  if (getPacket(invData.BTAddress, 1) != E_OK) // 3. Receive
     return E_INIT;
 
   if (!validateChecksum())
     return E_CHKSUM;
 
-  pInvData->Serial = get_u32(pcktBuf + 57);
-  DEBUG1_PRINTF("Serial Nr: %lu\n", pInvData->Serial);
+  invData.Serial = get_u32(pcktBuf + 57);
+  logW("Serial Nr: %lu\n", invData.Serial);
   return E_OK;
 }
 
 // log off SMA Inverter - adapted from SBFspot Open Source Project (SBFspot.cpp) by mrtoy-me
-void logoffSMAInverter()
+void ESP32_SMA_Inverter::logoffSMAInverter()
 {
-  extern uint8_t sixff[6];
+  //extern uint8_t sixff[6];
   pcktID++;
   writePacketHeader(pcktBuf, 0x01, sixff);
   writePacket(pcktBuf, 0x08, 0xA0, 0x0300, 0xFFFF, 0xFFFFFFFF);
@@ -634,8 +695,8 @@ void logoffSMAInverter()
 }
 
 // **** Logon SMA **********
-E_RC logonSMAInverter(const char *password, const uint8_t user) {
-  extern uint8_t sixff[6];
+E_RC ESP32_SMA_Inverter::logonSMAInverter(const char *password, const uint8_t user) {
+  //extern uint8_t sixff[6];
   #define MAX_PWLENGTH 12
   uint8_t pw[MAX_PWLENGTH];
   E_RC rc = E_OK;
@@ -668,9 +729,9 @@ E_RC logonSMAInverter(const char *password, const uint8_t user) {
     if (!validateChecksum()) return E_CHKSUM;
     uint16_t rcvpcktID = get_u16(pcktBuf+27) & 0x7FFF;
     if ((pcktID == rcvpcktID) && (get_u32(pcktBuf + 41) == now)) {
-      pInvData->SUSyID = get_u16(pcktBuf + 15);
-      pInvData->Serial = get_u32(pcktBuf + 17);
-      DEBUG3_PRINTF("Set:->SUSyID=0x%02X ->Serial=0x%02X ", pInvData->SUSyID, pInvData->Serial);
+      invData.SUSyID = get_u16(pcktBuf + 15);
+      invData.Serial = get_u32(pcktBuf + 17);
+      logV("Set:->SUSyID=0x%02X ->Serial=0x%02X ", invData.SUSyID, invData.Serial);
       validPcktID = true;
       uint8_t retcode = get_u16(pcktBuf + 23);
       // switch (retcode) {
@@ -679,8 +740,8 @@ E_RC logonSMAInverter(const char *password, const uint8_t user) {
       //     default: rc = (E_RC)retcode; break;
       // }
     } else { 
-      DEBUG1_PRINTF("Unexpected response  %02X:%02X:%02X:%02X:%02X:%02X pcktID=0x%04X rcvpcktID=0x%04X now=0x%04X", 
-                   BTrdBuf[9], BTrdBuf[8], BTrdBuf[7], BTrdBuf[6], BTrdBuf[5], BTrdBuf[4],
+      logW("Unexpected response  %02X:%02X:%02X:%02X:%02X:%02X pcktID=0x%04X rcvpcktID=0x%04X now=0x%04X", 
+                   btrdBuf[9], btrdBuf[8], btrdBuf[7], btrdBuf[6], btrdBuf[5], btrdBuf[4],
                    pcktID, rcvpcktID, now);
       rc = E_INVRESP;
     }
@@ -701,17 +762,17 @@ E_RC ArchiveDayData(time_t startTime) {
   E_RC rc = E_OK;
 
   for (unsigned int i = 0; i<ARCH_DAY_SIZE; i++) {
-     pInvData->dayWh[i] = 0;
+     invData.dayWh[i] = 0;
   }
-  pInvData->hasDayData = false;
+  invData.hasDayData = false;
 
   int packetcount = 0;
   bool validPcktID = false;
 
   E_RC hasData = E_ARCHNODATA;
   pcktID++;
-  writePacketHeader(pcktBuf, 0x01, pInvData->BTAddress);
-  writePacket(pcktBuf, 0x09, 0xE0, 0, pInvData->SUSyID, pInvData->Serial);
+  writePacketHeader(pcktBuf, 0x01, invData.BTAddress);
+  writePacket(pcktBuf, 0x09, 0xE0, 0, invData.SUSyID, invData.Serial);
   write32(pcktBuf, 0x70000200);
   write32(pcktBuf, startTime - 300);
   write32(pcktBuf, startTime + 86100);
@@ -726,7 +787,7 @@ E_RC ArchiveDayData(time_t startTime) {
     dateTime = 0;
 
     do {
-      rc = getPacket(pInvData->BTAddress, 1);
+      rc = getPacket(invData.BTAddress, 1);
 
       if (rc != E_OK) {
          DEBUG3_PRINTF("\ngetPacket error=%d", rc);
@@ -748,15 +809,15 @@ E_RC ArchiveDayData(time_t startTime) {
             uint16_t idx =((dateTime/3600)%24 * 12)+((dateTime/60)%60/5); //h*12+min/5
 
             totalWh = get_u64(pcktBuf + x + 4);
-            if ((totalWh > 0) && (!pInvData->hasDayData)) { 
-              pInvData->DayStartTime = dateTime;
-              pInvData->hasDayData = true;
+            if ((totalWh > 0) && (!invData.hasDayData)) { 
+              invData.DayStartTime = dateTime;
+              invData.hasDayData = true;
               hasData = E_OK; 
               printUnixTime(timeBuf, dateTime); 
               DEBUG1_PRINTF("\nArchiveDayData %s", timeBuf);
             }
             if (idx < ARCH_DAY_SIZE) {
-              pInvData->dayWh[idx] = totalWh;
+              invData.dayWh[idx] = totalWh;
               value64 = (totalWh - totalWh_prev) * 60 / 5; // assume 5 min. interval
               DEBUG3_PRINTF("[%03u] %6llu Wh %6llu W\n", idx, totalWh, value64);
             }
@@ -772,13 +833,13 @@ E_RC ArchiveDayData(time_t startTime) {
   } while (!validPcktID);
 
   /* print values
-  time_t startT = pInvData->DayStartTime;
+  time_t startT = invData.DayStartTime;
   printUnixTime(timeBuf, startT);
   DEBUG2_PRINTF("Day History: %s\n", timeBuf);
   totalWh_prev = 0;
 
   for (uint16_t i = 0; i<ARCH_DAY_SIZE; i++) {
-    totalWh = pInvData->dayWh[i];
+    totalWh = invData.dayWh[i];
     value32=0;
     if ((totalWh>0) && (totalWh_prev>0)) {
       value32 = (uint32_t)((totalWh - totalWh_prev)*60/5); 
@@ -794,7 +855,7 @@ E_RC ArchiveDayData(time_t startTime) {
 }
 */
 // ******* read SMA current data **********
-E_RC ReadCurrentData() {
+E_RC ESP32_SMA_Inverter::ReadCurrentData() {
   if (!btConnected) {
     charLen += snprintf(charBuf+charLen, CHAR_BUF_MAX-charLen, "Bluetooth offline!\n");
     return E_NODATA;
@@ -838,3 +899,125 @@ E_RC ReadCurrentData() {
 //case 8: if ((getInverterData(OperationTime)) != E_OK) DEBUG1_PRINTLN("OperationTime error!" ); // OperTime + OperTime
   return E_OK;
 } 
+
+
+
+// **** receive BT byte *******
+uint8_t ESP32_SMA_Inverter::BTgetByte() {
+  readTimeout = false;
+  //Returns a single byte from the bluetooth stream (with error timeout/reset)
+  uint32_t time = 20000+millis(); // 20 sec 
+  uint8_t  rec = 0;  
+
+  while (!serialBT.available() ) {
+    //delay(5);  //Wait for BT byte to arrive
+    if (millis() > time) { 
+      DEBUG2_PRINTLN("BTgetByte Timeout");
+      readTimeout = true;
+      break;
+    }
+  }
+
+  if (!readTimeout) rec = serialBT.read();
+  return rec;
+}
+// **** transmit BT buffer ****
+void ESP32_SMA_Inverter::BTsendPacket( uint8_t *btbuffer ) {
+  //DEBUG2_PRINTLN();
+  for(int i=0;i<pcktBufPos;i++) {
+    #ifdef DebugBT
+    if (i==0) DEBUG2_PRINT("*** sStart=");
+    if (i==1) DEBUG2_PRINT(" len=");
+    if (i==3) {
+      if ((0x7e ^ *(btbuffer+1) ^ *(btbuffer+2)) == *(btbuffer+3)) 
+        DEBUG2_PRINT(" checkOK=");
+      else  DEBUG2_PRINT(" checkFalse!!=");
+    }
+    if (i==4)  DEBUG2_PRINTF("\nfrMac[%d]=",i);
+    if (i==10) DEBUG2_PRINTF(" toMac[%d]=",i);
+    if (i==16) DEBUG2_PRINTF(" Type[%d]=",i);
+    if ((i==18)||(i==18+16)||(i==18+32)||(i==18+48)) DEBUG2_PRINTF("\nsDat[%d]=",i);
+    DEBUG2_PRINTF("%02X,", *(btbuffer+i)); // Print out what we are sending, in hex, for inspection.
+    #endif
+    serialBT.write( *(btbuffer+i) );  // Send to SMA via ESP32 bluetooth
+  }
+  HexDump(btbuffer, pcktBufPos, 10, 'T');
+}
+
+
+//-------------------------------------------------------------------------
+// ********************************************************
+void ESP32_SMA_Inverter::writeByte(uint8_t *btbuffer, uint8_t v) {
+  //Keep a rolling checksum over the payload
+  fcsChecksum = (fcsChecksum >> 8) ^ fcstab[(fcsChecksum ^ v) & 0xff];
+  if (v == 0x7d || v == 0x7e || v == 0x11 || v == 0x12 || v == 0x13) {
+    btbuffer[pcktBufPos++] = 0x7d;
+    btbuffer[pcktBufPos++] = v ^ 0x20;
+  } else {
+    btbuffer[pcktBufPos++] = v;
+  }
+}
+// ********************************************************
+void ESP32_SMA_Inverter::write32(uint8_t *btbuffer, uint32_t v) {
+  writeByte(btbuffer,(uint8_t)((v >> 0) & 0xFF));
+  writeByte(btbuffer,(uint8_t)((v >> 8) & 0xFF));
+  writeByte(btbuffer,(uint8_t)((v >> 16) & 0xFF));
+  writeByte(btbuffer,(uint8_t)((v >> 24) & 0xFF));
+}
+// ********************************************************
+void ESP32_SMA_Inverter::write16(uint8_t *btbuffer, uint16_t v) {
+  writeByte(btbuffer,(uint8_t)((v >> 0) & 0xFF));
+  writeByte(btbuffer,(uint8_t)((v >> 8) & 0xFF));
+}
+// ********************************************************
+void ESP32_SMA_Inverter::writeArray(uint8_t *btbuffer, const uint8_t bytes[], int loopcount) {
+    for (int i = 0; i < loopcount; i++) writeByte(btbuffer, bytes[i]);
+}
+// ********************************************************
+//  writePacket(pcktBuf, 0x0E, 0xA0, 0x0100, 0xFFFF, 0xFFFFFFFF); // anySUSyID, anySerial);
+void ESP32_SMA_Inverter::writePacket(uint8_t *buf, uint8_t longwords, uint8_t ctrl, uint16_t ctrl2, uint16_t dstSUSyID, uint32_t dstSerial) {
+  buf[pcktBufPos++] = 0x7E;   //Not included in checksum
+  write32(buf, BTH_L2SIGNATURE);
+  writeByte(buf, longwords);
+  writeByte(buf, ctrl);
+  write16(buf, dstSUSyID);
+  write32(buf, dstSerial);
+  write16(buf, ctrl2);
+  write16(buf, appSUSyID);
+  write32(buf, appSerial);
+  write16(buf, ctrl2);
+  write16(buf, 0);
+  write16(buf, 0);
+  write16(buf, pcktID | 0x8000);
+}
+//-------------------------------------------------------------------------
+void ESP32_SMA_Inverter::writePacketTrailer(uint8_t *btbuffer) {
+  fcsChecksum ^= 0xFFFF;
+  btbuffer[pcktBufPos++] = fcsChecksum & 0x00FF;
+  btbuffer[pcktBufPos++] = (fcsChecksum >> 8) & 0x00FF;
+  btbuffer[pcktBufPos++] = 0x7E;  //Trailing byte
+}
+//-------------------------------------------------------------------------
+void ESP32_SMA_Inverter::writePacketLength(uint8_t *buf) {
+  buf[1] = pcktBufPos & 0xFF;         //Lo-Byte
+  buf[2] = (pcktBufPos >> 8) & 0xFF;  //Hi-Byte
+  buf[3] = buf[0] ^ buf[1] ^ buf[2];      //checksum
+}
+//-------------------------------------------------------------------------
+bool ESP32_SMA_Inverter::validateChecksum() {
+  fcsChecksum = 0xffff;
+  //Skip over 0x7e at start and end of packet
+  for(int i = 1; i <= pcktBufPos - 4; i++) {
+    fcsChecksum = (fcsChecksum >> 8) ^ fcstab[(fcsChecksum ^ pcktBuf[i]) & 0xff];
+  }
+  fcsChecksum ^= 0xffff;
+
+  if (get_u16(pcktBuf+pcktBufPos-3) == fcsChecksum) {
+    return true;
+  } else {
+    DEBUG1_PRINTF("Invalid validateChecksum 0x%04X not 0x%04X\n", 
+    fcsChecksum, get_u16(pcktBuf+pcktBufPos-3));
+    return false;
+  }
+}
+
