@@ -46,8 +46,9 @@ extern void E_handleForm() {
 
 void ESP32_SMA_MQTT::wifiTime() {
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
-  const long  gmtOffset_sec = 3600;   // offset seconds, this depends on your time zone (3600 is GMT +1)
-  const int   daylightOffset_sec = 3600;  // daylight saving offset seconds
+
+  long  gmtOffset_sec = config.timezone * 3600;   // offset seconds, this depends on your time zone (3600 is GMT +1)
+  int   daylightOffset_sec = 0;  // daylight saving offset seconds
   logD("Setting time via %s, gmt: %d, dst: %d ", config.ntphostname.c_str(), gmtOffset_sec, daylightOffset_sec);
 
 
@@ -204,6 +205,7 @@ void ESP32_SMA_MQTT::wifiLoop(){
     WiFi.reconnect();
     mqttInstance.previousMillis = currentMillis;
   }
+
   ESP32_SMA_Inverter_App::webServer.handleClient();
 }
 
@@ -251,7 +253,7 @@ table, th, td {\
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>Inverter scan rate:</TD><TD> <input type=\"text\" name=\"scanRate\" value=\"%d\"></TD><TR>\n\n",config.scanRate);
   strcat(responseHTML, tempstr);
-  sprintf(tempstr, "<TR><TD>Timezone:</TD><TD> <input type=\"text\" name=\"timezone\" value=\"%s\"></TD><TR>\n\n",config.timezone.c_str());
+  sprintf(tempstr, "<TR><TD>Timezone (in hours from UTC):</TD><TD> <input type=\"text\" name=\"timezone\" value=\"%4.2f\"></TD><TR>\n\n",config.timezone);
   strcat(responseHTML, tempstr);
   sprintf(tempstr, "<TR><TD>NTP host:</TD><TD> <input type=\"text\" name=\"ntphostname\" value=\"%s\"></TD><TR>\n\n",config.ntphostname.c_str());
   strcat(responseHTML, tempstr);
@@ -273,20 +275,21 @@ table, th, td {\
   snprintf(tempstr, sizeof(tempstr),
 "<tr><td>MQTT Topic</td><td>%s</td></tr>\n\
  <tr><td>BT Signal Strength</td><td>%4.1f %</td></tr>\n\
-  <tr><td>Uac</td><td>%15.1f V</td></tr>\n\
- <tr><td>Iac</td><td>%15.1f A</td></tr>\n\
- <tr><td>Pac</td><td>%15.1f kW</td></tr>\n\
+  <tr><td>Uac</td><td>A: %15.1f ,B: %15.1f ,C: %15.1f V</td></tr>\n\
+ <tr><td>Iac</td><td>A: %15.1f ,B: %15.1f ,C: %15.1f A</td></tr>\n\
+ <tr><td>Pac</td><td>%15.2f kW</td></tr>\n\
  <tr><td>Udc</td><td>String 1: %15.1f V, String 2: %15.1f V</td></tr>\n\
  <tr><td>Idc</td><td>String 1: %15.1f A, String 2: %15.1f A</td></tr>\n\
  <tr><td>Wdc</td><td>String 1: %15.1f kW, String 2: %15.1f kW</td></tr>\n"
  , fulltopic
  , dispData.BTSigStrength
- , dispData.Uac
- , dispData.Iac
+ , dispData.Uac[0], dispData.Uac[1], dispData.Uac[2]
+ , dispData.Iac[0], dispData.Iac[1], dispData.Iac[2]
  , dispData.Pac
  , dispData.Udc[0], dispData.Udc[1]
  , dispData.Idc[0], dispData.Idc[1]
  , dispData.Udc[0] * dispData.Idc[0] / 1000 , dispData.Udc[1] * dispData.Idc[1] / 1000);
+
 
   strcat(responseHTML, tempstr);
 
@@ -341,7 +344,7 @@ void ESP32_SMA_MQTT::handleForm() {
         log_w("%s\n",v.c_str());
         config.hassDisc = true;
       } else if (name == "timezone") {
-        config.timezone = v.c_str();
+        config.timezone = atof(v.c_str());
       } else if (name == "ntphostname") {
         config.ntphostname = v.c_str();
       }

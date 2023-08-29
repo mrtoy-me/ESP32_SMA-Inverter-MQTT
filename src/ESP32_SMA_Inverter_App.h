@@ -51,7 +51,7 @@ struct AppConfig {
     int scanRate;
     bool hassDisc;
     String ntphostname;
-    String timezone;
+    float timezone;
 };
 
 

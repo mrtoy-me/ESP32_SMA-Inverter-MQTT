@@ -158,6 +158,7 @@ void ESP32_SMA_Inverter_App::appLoop() {
   }
   // DEBUG1_PRINT(".");
   mqttInstanceForApp.wifiLoop();
+
     
   delay(100);
 }
