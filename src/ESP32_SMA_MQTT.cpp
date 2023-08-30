@@ -510,8 +510,8 @@ void ESP32_SMA_MQTT::hassAutoDiscover(int timeout){
     sendHassAuto(msg, msg_size, timeout, topic, "current", "DC Current (String 1)", "A", "Idc[0]", "Idc0");
     sendHassAuto(msg, msg_size, timeout, topic, "current", "DC Current (String 2)", "A", "Idc[1]", "Idc1");
 
-    sendHassAuto(msg, msg_size, timeout, topic, "energy", "kWh Today", "kWh", "EToday", "EToday");
-    sendHassAuto(msg, msg_size, timeout, topic, "energy", "kWh Total", "kWh", "ETotal", "ETotal");
+    sendHassAuto(msg, msg_size, timeout, topic, "energy\", \"state_class\": \"total_increasing\", \"force_update\": \"true", "kWh Today", "kWh", "EToday", "EToday");
+    sendHassAuto(msg, msg_size, timeout, topic, "energy\", \"state_class\": \"total_increasing\", \"force_update\": \"true", "kWh Total", "kWh", "ETotal", "ETotal");
 
     sendHassAuto(msg, msg_size, timeout, topic, "temperature", "Inverter Temperature", "°C", "InvTemp", "InvTemp");
     sendHassAutoNoClassNoUnit(msg, msg_size, timeout, topic, "Device Status", "DevStatus", "DevStatus");
@@ -522,14 +522,14 @@ void ESP32_SMA_MQTT::hassAutoDiscover(int timeout){
 }
 
 void ESP32_SMA_MQTT::sendHassAutoNoClassNoUnit(char *msg, size_t msg_size, int timeout, const char *topic, const char *devname, const char *sensortype, const char *sensortypeid) {
-    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA %s\", \"manufacturer\": \"SMA\"  } }", devname, topic, timeout, sensortype, topic, sensortypeid, topic, topic);
+    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"%s\", \"manufacturer\": \"SMA\"  } }", devname, topic, timeout, sensortype, topic, sensortypeid, topic, topic);
     logD(msg);
     sendLongMQTT(topic, sensortypeid, msg);
 }
 
 void
 ESP32_SMA_MQTT::sendHassAutoNoClass(char *msg, size_t msg_size, int timeout, const char *topic, const char *devname, const char *unitOf, const char *sensortype, const char *sensortypeid) {
-    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA %s\", \"manufacturer\": \"SMA\"  } }", devname, topic, unitOf, timeout, sensortype, topic, sensortypeid, topic, topic);
+    snprintf(msg, msg_size, "{\"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\" , \"device\": { \"identifiers\": [\"%s\"], \"name\": \"%s\", \"manufacturer\": \"SMA\"  } }", devname, topic, unitOf, timeout, sensortype, topic, sensortypeid, topic, topic);
     logD(msg);
     sendLongMQTT(topic, sensortypeid, msg);
 }
@@ -537,7 +537,7 @@ ESP32_SMA_MQTT::sendHassAutoNoClass(char *msg, size_t msg_size, int timeout, con
 void ESP32_SMA_MQTT::sendHassAuto(char *msg, size_t msg_size, int timeout, const char *topic, const char *devclass,
                                   const char *devname, const char *unitOf, const char *sensortype,
                                   const char *sensortypeid) {
-    snprintf(msg, msg_size, "{\"device_class\": \"%s\", \"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\", \"device\": { \"identifiers\": [\"%s\"], \"name\": \"SMA %s\", \"manufacturer\": \"SMA\"  } } ", 
+    snprintf(msg, msg_size, "{\"device_class\": \"%s\", \"name\": \"%s\" , \"state_topic\": \"sma/solar/%s/state\", \"unit_of_measurement\": \"%s\", \"expire_after\": %d, \"value_template\": \"{{ value_json.%s }}\", \"unique_id\": \"%s-%s\", \"device\": { \"identifiers\": [\"%s\"], \"name\": \"%s\", \"manufacturer\": \"SMA\"  } } ", 
       devclass, devname, topic, unitOf, timeout, sensortype, topic, sensortypeid, topic, topic);
     logD(msg);
     sendLongMQTT(topic, sensortypeid, msg);
