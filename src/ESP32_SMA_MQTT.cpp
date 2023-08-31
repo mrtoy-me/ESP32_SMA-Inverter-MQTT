@@ -406,8 +406,9 @@ bool ESP32_SMA_MQTT::publishData(){
     // char tmpstr[100];
 
 
+
     snprintf(theData,sizeof(theData)-1,
-    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f, \"InvTemp\": %4.2f, \"DevStatus\": %d, \"GridRelay\": %d }"
+    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f, \"InvTemp\": %4.2f, \"DevStatus\": \"%s\", \"GridRelay\": \"%s\" }"
  , invData.Serial
  , dispData.BTSigStrength
  , dispData.Uac[0],dispData.Uac[1],dispData.Uac[2]
@@ -420,8 +421,8 @@ bool ESP32_SMA_MQTT::publishData(){
  , dispData.EToday
  , dispData.ETotal
  , dispData.InvTemp
- , invData.DevStatus
- , invData.GridRelay
+ , getInverterCode(invData.DevStatus).c_str()
+ , getInverterCode(invData.GridRelay).c_str()
 );
 
 

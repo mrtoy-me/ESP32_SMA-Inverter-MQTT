@@ -13,6 +13,7 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <map>
 
 #include "SMA_Inverter.h"
 #include "SMA_Utils.h"
@@ -56,14 +57,53 @@ public:
     unsigned long previousMillis = 0;
     unsigned long interval = 30000;
 
+protected:
+    std::map<int, std::string> codeMap;
+
 private:
     // Private constructor to prevent instantiation from outside the class.
     ESP32_SMA_MQTT() : ESP32Loggable("ESP32_SMA_MQTT") {
+         initMap();
         logger().setLevel(esp32m::Debug);
     }
 
     // Destructor (optional, as the singleton instance will be destroyed when the program ends).
     ~ESP32_SMA_MQTT() {}
+
+    // Inverter index decoding
+      void initMap() {
+
+      codeMap[50]="Status";
+      codeMap[51]="Closed";
+
+      codeMap[300]="Nat";
+      codeMap[301]="Grid failure";
+      codeMap[302]="-------";
+      codeMap[303]="Off";
+      codeMap[304]="Island mode";
+      codeMap[305]="Island mode";
+      codeMap[306]="SMA Island mode 60 Hz";
+      codeMap[307]="OK";
+      codeMap[308]="On";
+      codeMap[309]="Operation";
+      codeMap[310]="General operating mode";
+      codeMap[311]="Open";
+      codeMap[312]="Phase assignment";
+      codeMap[313]="SMA Island mode 50 Hz";
+
+      codeMap[16777213]="Information not available";
+
+    }
+
+
+    std::string getInverterCode(int invCode) {
+      std::map<int, std::string>::iterator it = codeMap.find(invCode);
+      if (it != codeMap.end())
+        return it->second;
+      else
+        return std::to_string(invCode);
+    }
+
 
 
     void sendSensorValue(char *tmpstr, const char *topic, const int timeout);
