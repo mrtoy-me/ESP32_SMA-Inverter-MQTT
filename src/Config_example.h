@@ -27,7 +27,7 @@
 #define SCAN_RATE  60
 #define HASS_DISCOVERY false
 #define HASS_STATE_TOPIC "homeassistant/sensor/%s/state"
-#define TIMEZONE ""
+#define TIMEZONE 1
 #define NTPHOSTNAME "pool.ntp.org"
 
 
