@@ -37,3 +37,15 @@ jobs:
 
       - name: Build Firmware
         run: platformio run --environment espwroom32
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        with:
+          files: |
+            .pio/build/espwroom32/firmware.elf
+          draft: false
+          prerelease: false
+
+      - name: Cleanup Old Artifacts
+        run: |
+            find .pio/build -type f -name "*.elf" | sort -r | tail -n +6 | xargs rm -f
