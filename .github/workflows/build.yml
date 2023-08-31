@@ -1,0 +1,34 @@
+name: Build Firmware
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Cache PlatformIO Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Set Up PlatformIO
+        uses: platformio/platformio-action@v2
+        with:
+          platform: espressif32@6.3.2  # Use the same version as in platformio.ini
+
+      - name: Build Firmware
+        run: platformio run --environment espwroom32
