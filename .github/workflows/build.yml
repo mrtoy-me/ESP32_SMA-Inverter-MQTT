@@ -28,9 +28,8 @@ jobs:
       - name: Set Up PlatformIO
         run: |
           pip install -U platformio
-          platformio update
-      
-              - name: Set Up PlatformIO
+          pio upgrade --dev
+          pio update
 
       - name: Build Firmware
         run: platformio run --environment espwroom32
