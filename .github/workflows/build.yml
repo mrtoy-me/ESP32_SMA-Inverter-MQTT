@@ -43,6 +43,7 @@ jobs:
         with:
           files: |
             .pio/build/espwroom32/firmware.elf
+          token: ${{ secrets.PLATFORMIO_RELEASE_TOKEN }}
           draft: false
           prerelease: false
 
