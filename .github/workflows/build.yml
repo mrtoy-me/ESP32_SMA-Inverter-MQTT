@@ -66,3 +66,16 @@ jobs:
         with:
           name: firmware
           path: .pio/build/espwroom32/firmware.elf
+  
+      - name: Upload Firmware as Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/espwroom32/firmware.elf
+          asset_name: firmware.elf
+          asset_content_type: application/octet-stream
+
+      - name: Cleanup Old Artifacts
+        run: |
+            find .pio/build -type f -name "*.elf" | sort -r | tail -n +6 | xargs rm -f
+  
