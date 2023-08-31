@@ -26,9 +26,11 @@ jobs:
             ${{ runner.os }}-pio-
 
       - name: Set Up PlatformIO
-        uses: platformio/platformio-action@v2
-        with:
-          platform: espressif32@6.3.2  # Use the same version as in platformio.ini
+        run: |
+          pip install -U platformio
+          platformio update
+      
+              - name: Set Up PlatformIO
 
       - name: Build Firmware
         run: platformio run --environment espwroom32
