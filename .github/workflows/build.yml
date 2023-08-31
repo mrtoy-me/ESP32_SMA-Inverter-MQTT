@@ -35,8 +35,8 @@ jobs:
           pio upgrade --dev
           pio update
 
-          - name: Build Firmware
-          run: pio run --environment espwroom32
+      - name: Build Firmware
+        run: pio run --environment espwroom32
   
       - name: Get Latest Release Tag
         id: get_latest_tag
