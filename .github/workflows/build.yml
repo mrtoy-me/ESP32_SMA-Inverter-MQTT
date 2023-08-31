@@ -61,12 +61,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PLATFORMIO_RELEASE_TOKEN }}
 
-      - name: Upload Firmware Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: firmware
-          path: .pio/build/espwroom32/firmware.elf
-  
       - name: Upload Firmware as Release Asset
         uses: actions/upload-release-asset@v1
         with:
@@ -74,7 +68,9 @@ jobs:
           asset_path: .pio/build/espwroom32/firmware.elf
           asset_name: firmware.elf
           asset_content_type: application/octet-stream
-
+        env:
+            GITHUB_TOKEN: ${{ secrets.PLATFORMIO_RELEASE_TOKEN }}
+  
       - name: Cleanup Old Artifacts
         run: |
             find .pio/build -type f -name "*.elf" | sort -r | tail -n +6 | xargs rm -f
