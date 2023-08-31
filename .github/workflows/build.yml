@@ -17,6 +17,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
+      - name: Rename Config File
+        run: |
+          mv src/Config_example.h src/config_values.h
+
       - name: Cache PlatformIO Dependencies
         uses: actions/cache@v2
         with:
