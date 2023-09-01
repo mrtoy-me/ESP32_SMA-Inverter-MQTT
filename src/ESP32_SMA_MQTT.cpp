@@ -156,13 +156,10 @@ void ESP32_SMA_MQTT::mySmartConfig() {
   // if no smartconfig received after 5 minutes, reboot and try again
   int count = 0;
   while (!WiFi.smartConfigDone()) {
-    delay(500);
+    delay(2000);
     logD(".");
-    if (count++ > 600 ) ESP.restart();
+    if (count++ > 250 ) ESP.restart();
   }
-
-
-
   logD("");
   logI("SmartConfig received.");
 
