@@ -1,0 +1,78 @@
+name: Build Firmware
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Rename Config File
+        run: |
+          mv src/Config_example.h src/config_values.h
+
+      - name: Cache PlatformIO Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Set Up PlatformIO
+        run: |
+          pip install -U platformio
+          pio upgrade --dev
+          pio update
+
+      - name: Build Firmware
+        run: pio run --environment espwroom32
+  
+      - name: Get Latest Release Tag
+        id: get_latest_tag
+        run: echo "::set-output name=tag::$(git describe --abbrev=0 --tags)"
+  
+      - name: Extract Minor Version
+        id: extract_minor_version
+        run: echo "::set-output name=minor_version::$(echo ${{ steps.get_latest_tag.outputs.tag }} | cut -d. -f2)"
+
+      - name: Increment Minor Version
+        id: increment_minor_version
+        run: echo "::set-output name=incremented_minor_version::$((${{ steps.extract_minor_version.outputs.minor_version }} + 1))"
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v1.${{ steps.increment_minor_version.outputs.incremented_minor_version }}.0
+          release_name: Release v1.${{ steps.increment_minor_version.outputs.incremented_minor_version }}.0
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.PLATFORMIO_RELEASE_TOKEN }}
+
+      - name: Upload Firmware as Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/espwroom32/firmware.elf
+          asset_name: firmware.elf
+          asset_content_type: application/octet-stream
+        env:
+            GITHUB_TOKEN: ${{ secrets.PLATFORMIO_RELEASE_TOKEN }}
+  
+      - name: Cleanup Old Artifacts
+        run: |
+            find .pio/build -type f -name "*.elf" | sort -r | tail -n +6 | xargs rm -f
+
+            

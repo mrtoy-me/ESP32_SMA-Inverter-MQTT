@@ -209,7 +209,7 @@ void ESP32_SMA_Inverter_App::loadConfiguration() {
     appConfig.smaBTAddress = doc["smaBTAddress"] | "AA:BB:CC:DD:EE:FF";
     appConfig.scanRate = doc["scanRate"] | 60 ;
     appConfig.hassDisc = doc["hassDisc"] | true ;
-    appConfig.timezone = doc["timezone"] | "";
+    appConfig.timezone = doc["timezone"] | 1;
     appConfig.ntpHostname = doc["ntphostname"] | "";
   #endif
 
