@@ -152,8 +152,15 @@ void ESP32_SMA_Inverter_App::appLoop() {
         }
         dayNight = nightTime;
       }
+      failCount=0;
     } else {  
       mqttInstanceForApp.logViaMQTT("Bluetooth failed to connect");
+      failCount++;
+      if( failCount > 5 ) {
+        logW("Failed to connect 5 times: Reboot\n");
+        ESP.restart();
+      }
+
     } 
   }
   // DEBUG1_PRINT(".");
