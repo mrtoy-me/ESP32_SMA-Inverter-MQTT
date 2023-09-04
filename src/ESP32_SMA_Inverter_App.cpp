@@ -95,6 +95,7 @@ void loop() {
 
 void ESP32_SMA_Inverter_App::appLoop() { 
   int adjustedScanRate;
+  struct tm timeinfo;
   // connect or reconnect after connection lost 
   if (nightTime)  // Scan every 15min
     adjustedScanRate = 900000;
@@ -140,7 +141,10 @@ void ESP32_SMA_Inverter_App::appLoop() {
         firstTime=false;
         delay(5000);
       }
-
+      getLocalTime(&timeinfo);
+      if (nightTime && (timeinfo.tm_hour >= 6) && (timeinfo.tm_hour <= 18)) {
+        nightTime = false;
+      }
       nightTime = mqttInstanceForApp.publishData();
       if ( nightTime != dayNight) {
         if (appConfig.mqttBroker.length() > 0) {
