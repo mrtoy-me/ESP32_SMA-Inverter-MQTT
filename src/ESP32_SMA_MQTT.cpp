@@ -388,13 +388,13 @@ void ESP32_SMA_MQTT::brokerConnect() {
 }
 
 // Returns true if nighttime
-bool ESP32_SMA_MQTT::publishData(){
+void ESP32_SMA_MQTT::publishData(){
   InverterData& invData = ESP32_SMA_Inverter::getInstance().invData;
   DisplayData& dispData = ESP32_SMA_Inverter::getInstance().dispData;
   AppConfig& config = ESP32_SMA_Inverter_App::getInstance().appConfig;
 
   if(config.mqttBroker.length() < 1 ){
-    return(false);
+    return;
   }
 
   brokerConnect();
@@ -438,11 +438,6 @@ bool ESP32_SMA_MQTT::publishData(){
       logW("Failed Publish\n");
     ESP32_SMA_Inverter_App::client.endPublish();
   }
-  // If Power is zero, it's night time
-  if (dispData.Pac > 0)
-    return(false);
-  else
-    return(true);
 }
 
 void ESP32_SMA_MQTT::logViaMQTT(const char *logStr){
