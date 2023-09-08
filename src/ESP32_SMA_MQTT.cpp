@@ -405,7 +405,7 @@ void ESP32_SMA_MQTT::publishData(){
 
 
     snprintf(theData,sizeof(theData)-1,
-    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.2f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.2f , %6.2f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f, \"InvTemp\": %4.2f, \"DevStatus\": \"%s\", \"GridRelay\": \"%s\" }"
+    "{ \"Serial\": %d, \"BTStrength\": %6.2f, \"Uac\": [ %6.2f, %6.2f, %6.2f ], \"Iac\": [ %6.2f, %6.2f, %6.2f ], \"Pac\": %6.0f, \"Udc\": [ %6.2f , %6.2f ], \"Idc\": [ %6.2f , %6.2f ], \"Wdc\": [%6.0f , %6.0f ], \"Freq\": %5.2f, \"EToday\": %6.2f, \"ETotal\": %15.2f, \"InvTemp\": %4.2f, \"DevStatus\": \"%s\", \"GridRelay\": \"%s\" }"
  , invData.Serial
  , dispData.BTSigStrength
  , dispData.Uac[0],dispData.Uac[1],dispData.Uac[2]
@@ -413,7 +413,7 @@ void ESP32_SMA_MQTT::publishData(){
  , dispData.Pac
  , dispData.Udc[0], dispData.Udc[1]
  , dispData.Idc[0], dispData.Idc[1]
- , dispData.Udc[0] * dispData.Idc[0] / 1000 , dispData.Udc[1] * dispData.Idc[1] / 1000
+ , dispData.Udc[0] * dispData.Idc[0] , dispData.Udc[1] * dispData.Idc[1]
  , dispData.Freq
  , dispData.EToday
  , dispData.ETotal
@@ -486,7 +486,7 @@ void ESP32_SMA_MQTT::hassAutoDiscover(int timeout){
   snprintf(topic,sizeof(topic)-1, "%s-%d",config.mqttTopic.c_str(), invData.Serial);
   const size_t msg_size = sizeof(msg);
 
-    sendHassAuto(msg, msg_size, timeout, topic, "power", "AC Power", "kW", "Pac", "Pac");
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "AC Power", "W", "Pac", "Pac");
     sendHassAuto(msg, msg_size, timeout, topic, "current", "A Phase Current", "A", "Iac[0]", "Iac0");
     sendHassAuto(msg, msg_size, timeout, topic, "current", "B Phase Current", "A", "Iac[1]", "Iac1");
     sendHassAuto(msg, msg_size, timeout, topic, "current", "C Phase Current", "A", "Iac[2]", "Iac2");
@@ -494,8 +494,8 @@ void ESP32_SMA_MQTT::hassAutoDiscover(int timeout){
     sendHassAuto(msg, msg_size, timeout, topic, "voltage", "B Phase Voltage", "V", "Uac[1]", "Uac1");
     sendHassAuto(msg, msg_size, timeout, topic, "voltage", "C Phase Voltage", "V", "Uac[2]", "Uac2");
     sendHassAuto(msg, msg_size, timeout, topic, "frequency", "AC Frequency", "Hz", "Freq", "Freq");
-    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 1)", "kW", "Wdc[0]", "Wdc0");
-    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 2)", "kW", "Wdc[1]", "Wdc1");
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 1)", "W", "Wdc[0]", "Wdc0");
+    sendHassAuto(msg, msg_size, timeout, topic, "power", "DC Power (String 2)", "W", "Wdc[1]", "Wdc1");
     sendHassAuto(msg, msg_size, timeout, topic, "voltage", "DC Voltage (String 1)", "V", "Udc[0]", "Udc0");
     sendHassAuto(msg, msg_size, timeout, topic, "voltage", "DC Voltage (String 2)", "V", "Udc[1]", "Udc1");
     sendHassAuto(msg, msg_size, timeout, topic, "current", "DC Current (String 1)", "A", "Idc[0]", "Idc0");

@@ -79,7 +79,7 @@ E_RC ESP32_SMA_Inverter::getPacket(uint8_t expAddr[6], int wait4Command) {
   bool hasL2pckt = false;
   E_RC rc = E_OK; 
   L1Hdr *pL1Hdr = (L1Hdr *)&btrdBuf[0];
-  int retries = 20;
+  int retries = 10;
   do {
     // read L1Hdr
     uint8_t rdCnt=0;
@@ -168,7 +168,11 @@ E_RC ESP32_SMA_Inverter::getPacket(uint8_t expAddr[6], int wait4Command) {
        serialBT.flush();
        logD("CommBuf[0]!=0x7e -> BT-flush");
     }
-  } while (((pL1Hdr->command != wait4Command) || ((rc == E_RETRY)) && (0xFF != wait4Command) && (retries-- > 0)) );
+    if (retries-- <=0) { 
+      logE("Packet retries exceeded");
+      ESP.restart();
+    }
+  } while (((pL1Hdr->command != wait4Command) || ((rc == E_RETRY)) && (0xFF != wait4Command)) );
 
   if ((rc == E_OK) ) {
   #if (DEBUG_SMA > 1)
@@ -310,7 +314,7 @@ E_RC ESP32_SMA_Inverter::getInverterDataCfl(uint32_t command, uint32_t first, ui
                   //This function gives us the time when the inverter was switched off
                   invData.LastTime = datetime;
                   invData.Pac = value32;
-                  dispData.Pac = tokW(value32);
+                  dispData.Pac = (float)value32;
                   //debug_watt("SPOT_PACTOT", value32, datetime);
                   printUnixTime(timeBuf, datetime);
                   logI("Pac %15.3f kW %x  GMT:%s \n", tokW(value32),value32, timeBuf);
